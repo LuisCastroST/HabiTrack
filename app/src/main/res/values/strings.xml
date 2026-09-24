@@ -3,4 +3,10 @@
     <string name="checkBoxLeer">Leer</string>
     <string name="checkBoxCaminar">Caminar</string>
     <string name="btnAceptar">Aceptar</string>
+    <string name="btnPantallaInicioIniciar">Iniciar</string>
+    <string name="txtPantallaInicioBienvenido">Bienvenido</string>
+    <string name="txtPantallaInicioHabiTrack">HabiTrack</string>
+    <string name="txtFUCKOFF">HabiTrack</string>
+    <string name="txtPantallaInicioFluf">A tu futuro</string>
+    <string name="app_name">HabiTrack</string>
 </resources>

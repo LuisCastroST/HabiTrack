@@ -9,4 +9,6 @@
     <string name="txtFUCKOFF">HabiTrack</string>
     <string name="txtPantallaInicioFluf">A tu futuro</string>
     <string name="app_name">HabiTrack</string>
+    <string name="btnReiniciar">Reiniciar</string>
+    <string name="switchModoOscuro">Modo oscuro</string>
 </resources>

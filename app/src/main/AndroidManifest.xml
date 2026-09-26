@@ -12,7 +12,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.HabiTrack">
         <activity
-            android:name=".MainActivity"
+            android:name=".PantalladeInicio"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -22,7 +22,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".PantalladeInicio"
+            android:name=".MainActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
     </application>

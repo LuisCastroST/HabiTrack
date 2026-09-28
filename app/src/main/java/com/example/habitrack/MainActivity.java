@@ -4,7 +4,10 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.ProgressBar;
 import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -19,6 +22,8 @@ public class MainActivity extends AppCompatActivity {
     CheckBox checkAgua, checkLeer, checkCaminar;
     Button btnAceptar, btnReiniciar;
     Switch switchTema;
+    ProgressBar progressBarHabitos;
+    TextView tvRacha;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,9 +35,10 @@ public class MainActivity extends AppCompatActivity {
         checkLeer = findViewById(R.id.checkBoxLeer);
         checkCaminar = findViewById(R.id.checkBoxCaminar);
         btnAceptar = findViewById(R.id.btnAceptar);
-
         btnReiniciar = findViewById(R.id.btnReiniciar);
         switchTema = findViewById(R.id.switchModoOscuro);
+        progressBarHabitos = findViewById(R.id.progressBarHabitos);
+        tvRacha = findViewById(R.id.tvRacha);
 
         if (switchTema != null) {
             switchTema.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -43,6 +49,18 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         }
+
+        CompoundButton.OnCheckedChangeListener checkListener = new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                actualizarBarraDeProgreso();
+            }
+        };
+
+        if (checkAgua != null) checkAgua.setOnCheckedChangeListener(checkListener);
+        if (checkLeer != null) checkLeer.setOnCheckedChangeListener(checkListener);
+        if (checkCaminar != null) checkCaminar.setOnCheckedChangeListener(checkListener);
+
         if (btnAceptar != null && checkAgua != null && checkLeer != null && checkCaminar != null) {
             btnAceptar.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -64,12 +82,18 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     if (!hayHabitos) {
-                        mensaje = new StringBuilder("¡Aún no has completado hábitos hoy! Anímate.");
+                        mensaje = new StringBuilder("Aun no has completado nada");
+                    } else {
+                        if (progressBarHabitos != null && progressBarHabitos.getProgress() == 100) {
+                            if (tvRacha != null) tvRacha.setText("Racha: 4 días");
+                            mensaje.append("\n Día completado, racha aumentada.");
+                        }
                     }
                     Toast.makeText(MainActivity.this, mensaje.toString(), Toast.LENGTH_LONG).show();
                 }
             });
         }
+
         if (btnReiniciar != null) {
             btnReiniciar.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -77,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
                     new android.app.AlertDialog.Builder(MainActivity.this)
                             .setTitle("Reiniciar Hábitos")
                             .setMessage("¿Estás seguro de que deseas desmarcar todos los hábitos de hoy?")
-                            .setPositiveButton("Sí, reiniciar", new android.content.DialogInterface.OnClickListener() {
+                            .setPositiveButton("Sí", new android.content.DialogInterface.OnClickListener() {
                                 public void onClick(android.content.DialogInterface dialog, int which) {
                                     if (checkAgua != null) checkAgua.setChecked(false);
                                     if (checkLeer != null) checkLeer.setChecked(false);
@@ -95,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         }
+
         View vistaPrincipal = findViewById(R.id.main);
         if (vistaPrincipal != null) {
             ViewCompat.setOnApplyWindowInsetsListener(vistaPrincipal, (v, insets) -> {
@@ -103,5 +128,20 @@ public class MainActivity extends AppCompatActivity {
                 return insets;
             });
         }
+    }
+
+    private void actualizarBarraDeProgreso() {
+        if (progressBarHabitos == null || checkAgua == null || checkLeer == null || checkCaminar == null) return;
+
+        int totalHabitos = 3;
+        int habitosCompletados = 0;
+
+        if (checkAgua.isChecked()) habitosCompletados++;
+        if (checkLeer.isChecked()) habitosCompletados++;
+        if (checkCaminar.isChecked()) habitosCompletados++;
+
+        int porcentaje = (habitosCompletados * 100) / totalHabitos;
+
+        progressBarHabitos.setProgress(porcentaje);
     }
 }

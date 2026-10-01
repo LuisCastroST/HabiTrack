@@ -8,9 +8,8 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
 
-    private static final String DATABASE_NAME = "HabitosDB.db";
-    private static final int DATABASE_VERSION = 1;
-    private static final String TABLE_HABITOS = "habitos_diarios";
+    private static final String DATABASE_NAME = "habitrack.db";
+    private static final int DATABASE_VERSION = 5;
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -18,51 +17,107 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        String createTable = "CREATE TABLE " + TABLE_HABITOS + " (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "nombre_habito TEXT, " +
-                "completado INTEGER DEFAULT 0)";
-        db.execSQL(createTable);
+        String CREATE_HABITS_TABLE = "CREATE TABLE " + HabitContract.HabitEntry.TABLE_NAME + " ("
+                + HabitContract.HabitEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + HabitContract.HabitEntry.COLUMN_NOMBRE + " TEXT NOT NULL, "
+                + HabitContract.HabitEntry.COLUMN_CATEGORIA + " TEXT, "
+                + HabitContract.HabitEntry.COLUMN_DIAS + " INTEGER DEFAULT 127, "
+                + HabitContract.HabitEntry.COLUMN_COLOR + " TEXT DEFAULT '#4CAF50', "
+                + HabitContract.HabitEntry.COLUMN_EN_DASHBOARD + " INTEGER DEFAULT 1);";
 
-        db.execSQL("INSERT INTO " + TABLE_HABITOS + " (nombre_habito, completado) VALUES ('Agua', 0)");
-        db.execSQL("INSERT INTO " + TABLE_HABITOS + " (nombre_habito, completado) VALUES ('Leer', 0)");
-        db.execSQL("INSERT INTO " + TABLE_HABITOS + " (nombre_habito, completado) VALUES ('Caminar', 0)");
+        String CREATE_REGISTROS_TABLE = "CREATE TABLE " + HabitContract.RegistroEntry.TABLE_NAME + " ("
+                + HabitContract.RegistroEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + HabitContract.RegistroEntry.COLUMN_HABITO_ID + " INTEGER, "
+                + HabitContract.RegistroEntry.COLUMN_FECHA + " TEXT NOT NULL, "
+                + HabitContract.RegistroEntry.COLUMN_COMPLETADO + " INTEGER DEFAULT 0);";
+
+        db.execSQL(CREATE_HABITS_TABLE);
+        db.execSQL(CREATE_REGISTROS_TABLE);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_HABITOS);
+        db.execSQL("DROP TABLE IF EXISTS " + HabitContract.HabitEntry.TABLE_NAME);
+        db.execSQL("DROP TABLE IF EXISTS " + HabitContract.RegistroEntry.TABLE_NAME);
         onCreate(db);
     }
 
-    public void actualizarEstadoHabito(String nombreHabito, boolean estaCompletado) {
+    public long insertarHabito(String nombre, String categoria, int dias, String color) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
-        values.put("completado", estaCompletado ? 1 : 0);
-
-        db.update(TABLE_HABITOS, values, "nombre_habito = ?", new String[]{nombreHabito});
-        db.close();
+        values.put(HabitContract.HabitEntry.COLUMN_NOMBRE, nombre);
+        values.put(HabitContract.HabitEntry.COLUMN_CATEGORIA, categoria);
+        values.put(HabitContract.HabitEntry.COLUMN_DIAS, dias);
+        values.put(HabitContract.HabitEntry.COLUMN_COLOR, color);
+        values.put(HabitContract.HabitEntry.COLUMN_EN_DASHBOARD, 1);
+        return db.insert(HabitContract.HabitEntry.TABLE_NAME, null, values);
     }
 
-    public boolean obtenerEstadoHabito(String nombreHabito) {
+    public Cursor obtenerTodosLosHabitos() {
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT completado FROM " + TABLE_HABITOS + " WHERE nombre_habito = ?", new String[]{nombreHabito});
-
-        boolean estado = false;
-        if (cursor.moveToFirst()) {
-            estado = cursor.getInt(0) == 1;
-        }
-        cursor.close();
-        db.close();
-        return estado;
+        return db.query(HabitContract.HabitEntry.TABLE_NAME, null, null, null, null, null, null);
     }
 
-    public void reiniciarTodosHabitos() {
+    public Cursor obtenerHabitosDashboard() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String selection = HabitContract.HabitEntry.COLUMN_EN_DASHBOARD + " = ?";
+        String[] selectionArgs = new String[]{"1"};
+        return db.query(HabitContract.HabitEntry.TABLE_NAME, null, selection, selectionArgs, null, null, null);
+    }
+
+    public void actualizarVisibilidadDashboard(int id, boolean enDashboard) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
-        values.put("completado", 0);
+        values.put(HabitContract.HabitEntry.COLUMN_EN_DASHBOARD, enDashboard ? 1 : 0);
+        db.update(HabitContract.HabitEntry.TABLE_NAME, values, HabitContract.HabitEntry._ID + " = ?", new String[]{String.valueOf(id)});
+    }
 
-        db.update(TABLE_HABITOS, values, null, null);
-        db.close();
+    public void guardarEstadoHabitoFecha(int habitoId, String fecha, boolean completado) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(HabitContract.RegistroEntry.TABLE_NAME,
+                HabitContract.RegistroEntry.COLUMN_HABITO_ID + " = ? AND " + HabitContract.RegistroEntry.COLUMN_FECHA + " = ?",
+                new String[]{String.valueOf(habitoId), fecha});
+        if (completado) {
+            ContentValues values = new ContentValues();
+            values.put(HabitContract.RegistroEntry.COLUMN_HABITO_ID, habitoId);
+            values.put(HabitContract.RegistroEntry.COLUMN_FECHA, fecha);
+            values.put(HabitContract.RegistroEntry.COLUMN_COMPLETADO, 1);
+            db.insert(HabitContract.RegistroEntry.TABLE_NAME, null, values);
+        }
+    }
+
+    public boolean estaCompletadoEnFecha(int habitoId, String fecha) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(HabitContract.RegistroEntry.TABLE_NAME,
+                new String[]{HabitContract.RegistroEntry.COLUMN_COMPLETADO},
+                HabitContract.RegistroEntry.COLUMN_HABITO_ID + " = ? AND " + HabitContract.RegistroEntry.COLUMN_FECHA + " = ? AND " + HabitContract.RegistroEntry.COLUMN_COMPLETADO + " = 1",
+                new String[]{String.valueOf(habitoId), fecha},
+                null, null, null);
+        boolean completado = cursor != null && cursor.getCount() > 0;
+        if (cursor != null) {
+            cursor.close();
+        }
+        return completado;
+    }
+
+    public Cursor obtenerHabitosCompletadosPorFecha(String fecha) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT h." + HabitContract.HabitEntry.COLUMN_NOMBRE + ", h." + HabitContract.HabitEntry.COLUMN_CATEGORIA + ", h." + HabitContract.HabitEntry.COLUMN_COLOR
+                + " FROM " + HabitContract.HabitEntry.TABLE_NAME + " h"
+                + " INNER JOIN " + HabitContract.RegistroEntry.TABLE_NAME + " r"
+                + " ON h." + HabitContract.HabitEntry._ID + " = r." + HabitContract.RegistroEntry.COLUMN_HABITO_ID
+                + " WHERE r." + HabitContract.RegistroEntry.COLUMN_FECHA + " = ? AND r." + HabitContract.RegistroEntry.COLUMN_COMPLETADO + " = 1";
+        return db.rawQuery(query, new String[]{fecha});
+    }
+
+    public Cursor obtenerTodosLosRegistros() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.query(HabitContract.RegistroEntry.TABLE_NAME, null, null, null, null, null, null);
+    }
+
+    public void eliminarHabito(int id) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(HabitContract.HabitEntry.TABLE_NAME, HabitContract.HabitEntry._ID + " = ?", new String[]{String.valueOf(id)});
+        db.delete(HabitContract.RegistroEntry.TABLE_NAME, HabitContract.RegistroEntry.COLUMN_HABITO_ID + " = ?", new String[]{String.valueOf(id)});
     }
 }

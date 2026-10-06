@@ -83,6 +83,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Reiniciar Progreso" />
+
+        <Button
+            android:id="@+id/btnCerrarSesion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cerrar Sesión" />
+
     </LinearLayout>
 
 </LinearLayout>

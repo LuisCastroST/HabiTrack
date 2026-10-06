@@ -4,31 +4,37 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class PantalladeInicio extends AppCompatActivity {
+
+    private Button btnIniciar;
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
+
+        mAuth = FirebaseAuth.getInstance();
+
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
+            Intent intent = new Intent(PantalladeInicio.this, MainActivity.class);
+            startActivity(intent);
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_pantallade_inicio);
-        Button btnPantallaInicioIniciar = findViewById(R.id.btnPantallaInicioIniciar);
 
-        btnPantallaInicioIniciar.setOnClickListener(v -> {
-                    Intent intent = new Intent(PantalladeInicio.this, MainActivity.class);
-                    startActivity(intent);
-                    finish();
-                });
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+        btnIniciar = findViewById(R.id.btnPantallaInicioIniciar);
 
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
+        btnIniciar.setOnClickListener(v -> {
+            Intent intent = new Intent(PantalladeInicio.this, PantallaLogin.class);
+            startActivity(intent);
         });
     }
 }

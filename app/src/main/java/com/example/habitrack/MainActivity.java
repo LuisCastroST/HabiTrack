@@ -22,13 +22,15 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.firebase.auth.FirebaseAuth;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
-    private Button btnReiniciar, btnGestionarHabitos, btnVerCalendario;
+    private Button btnReiniciar, btnGestionarHabitos, btnVerCalendario, btnCerrarSesion;
     private Switch switchTema;
     private ProgressBar progressBarHabitos;
     private TextView tvRacha;
@@ -54,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
         btnVerCalendario = findViewById(R.id.btnVerCalendario);
         switchTema = findViewById(R.id.switchModoOscuro);
         progressBarHabitos = findViewById(R.id.progressBarHabitos);
+        btnCerrarSesion = findViewById(R.id.btnCerrarSesion);
         tvRacha = findViewById(R.id.tvRacha);
         layoutContenedorHabitos = findViewById(R.id.layoutContenedorHabitos);
 
@@ -85,6 +88,10 @@ public class MainActivity extends AppCompatActivity {
             btnReiniciar.setOnClickListener(v -> mostrarDialogoReiniciar());
         }
 
+        if (btnCerrarSesion != null) {
+            btnCerrarSesion.setOnClickListener(v -> mostrarDialogoCerrarSesion());
+        }
+
         View vistaPrincipal = findViewById(R.id.main);
         if (vistaPrincipal != null) {
             ViewCompat.setOnApplyWindowInsetsListener(vistaPrincipal, (v, insets) -> {
@@ -93,6 +100,15 @@ public class MainActivity extends AppCompatActivity {
                 return insets;
             });
         }
+    }
+
+    private void cerrarSesion() {
+        FirebaseAuth.getInstance().signOut();
+
+        Intent intent = new Intent(MainActivity.this, PantallaLogin.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     @Override
@@ -122,6 +138,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void mostrarDialogoCerrarSesion() {
+        new AlertDialog.Builder(MainActivity.this)
+                .setTitle("Cerrar Sesión")
+                .setMessage("Estás seguro de que quieres cerrar sesión?")
+                .setPositiveButton("Cerrar Sesión", (dialog, which) -> {
+                    FirebaseAuth.getInstance().signOut();
+
+                    Intent intent = new Intent(MainActivity.this, PantallaLogin.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+    //DIOOOOOOOOOOOOOOOOOOOOOSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
     private void evaluarCumplimientoFecha(String fecha) {
         Cursor cursor = dbHelper.obtenerHabitosDashboard();
         int total = 0;

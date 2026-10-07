@@ -1,11 +1,14 @@
 package com.example.habitrack;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.os.Build;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
@@ -25,6 +28,7 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
@@ -41,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "HabiTrackPrefs";
     private static final String KEY_RACHA = "racha_dias";
     private static final String KEY_LAST_DATE = "ultima_fecha";
+    private static final String KEY_MODO_OSCURO = "modo_oscuro";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,8 +65,11 @@ public class MainActivity extends AppCompatActivity {
         tvRacha = findViewById(R.id.tvRacha);
         layoutContenedorHabitos = findViewById(R.id.layoutContenedorHabitos);
 
+        boolean modoOscuroActivo = sharedPreferences.getBoolean(KEY_MODO_OSCURO, false);
         if (switchTema != null) {
+            switchTema.setChecked(modoOscuroActivo);
             switchTema.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                sharedPreferences.edit().putBoolean(KEY_MODO_OSCURO, isChecked).apply();
                 if (isChecked) {
                     AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
                 } else {
@@ -92,14 +100,14 @@ public class MainActivity extends AppCompatActivity {
             btnCerrarSesion.setOnClickListener(v -> mostrarDialogoCerrarSesion());
         }
 
-        View vistaPrincipal = findViewById(R.id.main);
-        if (vistaPrincipal != null) {
-            ViewCompat.setOnApplyWindowInsetsListener(vistaPrincipal, (v, insets) -> {
-                Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-                v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-                return insets;
-            });
-        }
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+
+        solicitarPermisoNotificaciones();
+        programarNotificacionDiaria();
     }
 
     private void cerrarSesion() {
@@ -142,34 +150,29 @@ public class MainActivity extends AppCompatActivity {
         new AlertDialog.Builder(MainActivity.this)
                 .setTitle("Cerrar Sesión")
                 .setMessage("Estás seguro de que quieres cerrar sesión?")
-                .setPositiveButton("Cerrar Sesión", (dialog, which) -> {
-                    FirebaseAuth.getInstance().signOut();
-
-                    Intent intent = new Intent(MainActivity.this, PantallaLogin.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(intent);
-                    finish();
-                })
+                .setPositiveButton("Cerrar Sesión", (dialog, which) -> cerrarSesion())
                 .setNegativeButton("Cancelar", null)
                 .show();
     }
-    //DIOOOOOOOOOOOOOOOOOOOOOSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS
+
     private void evaluarCumplimientoFecha(String fecha) {
         Cursor cursor = dbHelper.obtenerHabitosDashboard();
         int total = 0;
         int completados = 0;
 
-        if (cursor != null && cursor.moveToFirst()) {
-            int idIndex = cursor.getColumnIndex(HabitContract.HabitEntry._ID);
-            do {
-                if (idIndex != -1) {
-                    int habitoId = cursor.getInt(idIndex);
-                    total++;
-                    if (dbHelper.estaCompletadoEnFecha(habitoId, fecha)) {
-                        completados++;
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                int idIndex = cursor.getColumnIndex(HabitContract.HabitEntry._ID);
+                do {
+                    if (idIndex != -1) {
+                        int habitoId = cursor.getInt(idIndex);
+                        total++;
+                        if (dbHelper.estaCompletadoEnFecha(habitoId, fecha)) {
+                            completados++;
+                        }
                     }
-                }
-            } while (cursor.moveToNext());
+                } while (cursor.moveToNext());
+            }
             cursor.close();
         }
 
@@ -188,30 +191,32 @@ public class MainActivity extends AppCompatActivity {
         String fechaHoy = obtenerFechaHoy();
         Cursor cursor = dbHelper.obtenerHabitosDashboard();
 
-        if (cursor != null && cursor.moveToFirst()) {
-            int idIndex = cursor.getColumnIndex(HabitContract.HabitEntry._ID);
-            int nombreIndex = cursor.getColumnIndex(HabitContract.HabitEntry.COLUMN_NOMBRE);
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                int idIndex = cursor.getColumnIndex(HabitContract.HabitEntry._ID);
+                int nombreIndex = cursor.getColumnIndex(HabitContract.HabitEntry.COLUMN_NOMBRE);
 
-            do {
-                if (idIndex != -1 && nombreIndex != -1) {
-                    int idHabito = cursor.getInt(idIndex);
-                    String nombreHabito = cursor.getString(nombreIndex);
-                    boolean completadoHoy = dbHelper.estaCompletadoEnFecha(idHabito, fechaHoy);
+                do {
+                    if (idIndex != -1 && nombreIndex != -1) {
+                        int idHabito = cursor.getInt(idIndex);
+                        String nombreHabito = cursor.getString(nombreIndex);
+                        boolean completadoHoy = dbHelper.estaCompletadoEnFecha(idHabito, fechaHoy);
 
-                    CheckBox cb = new CheckBox(this);
-                    cb.setText(nombreHabito);
-                    cb.setChecked(completadoHoy);
-                    cb.setTextSize(18);
-                    cb.setPadding(0, 12, 0, 12);
+                        CheckBox cb = new CheckBox(this);
+                        cb.setText(nombreHabito);
+                        cb.setChecked(completadoHoy);
+                        cb.setTextSize(18);
+                        cb.setPadding(0, 12, 0, 12);
 
-                    cb.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                        dbHelper.guardarEstadoHabitoFecha(idHabito, fechaHoy, isChecked);
-                        actualizarBarraDeProgreso();
-                    });
+                        cb.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                            dbHelper.guardarEstadoHabitoFecha(idHabito, fechaHoy, isChecked);
+                            actualizarBarraDeProgreso();
+                        });
 
-                    layoutContenedorHabitos.addView(cb);
-                }
-            } while (cursor.moveToNext());
+                        layoutContenedorHabitos.addView(cb);
+                    }
+                } while (cursor.moveToNext());
+            }
             cursor.close();
         }
 
@@ -226,17 +231,19 @@ public class MainActivity extends AppCompatActivity {
         int totalHabitos = 0;
         int habitosCompletados = 0;
 
-        if (cursor != null && cursor.moveToFirst()) {
-            int idIndex = cursor.getColumnIndex(HabitContract.HabitEntry._ID);
-            do {
-                if (idIndex != -1) {
-                    int idHabito = cursor.getInt(idIndex);
-                    totalHabitos++;
-                    if (dbHelper.estaCompletadoEnFecha(idHabito, fechaHoy)) {
-                        habitosCompletados++;
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                int idIndex = cursor.getColumnIndex(HabitContract.HabitEntry._ID);
+                do {
+                    if (idIndex != -1) {
+                        int idHabito = cursor.getInt(idIndex);
+                        totalHabitos++;
+                        if (dbHelper.estaCompletadoEnFecha(idHabito, fechaHoy)) {
+                            habitosCompletados++;
+                        }
                     }
-                }
-            } while (cursor.moveToNext());
+                } while (cursor.moveToNext());
+            }
             cursor.close();
         }
 
@@ -275,5 +282,43 @@ public class MainActivity extends AppCompatActivity {
             dbHelper.close();
         }
         super.onDestroy();
+    }
+
+    private void solicitarPermisoNotificaciones() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 101);
+            }
+        }
+    }
+
+    private void programarNotificacionDiaria() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, NotificationReceiver.class);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.HOUR_OF_DAY, 20);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+
+        if (calendar.getTimeInMillis() < System.currentTimeMillis()) {
+            calendar.add(Calendar.DAY_OF_YEAR, 1);
+        }
+
+        if (alarmManager != null) {
+            alarmManager.setRepeating(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.getTimeInMillis(),
+                    AlarmManager.INTERVAL_DAY,
+                    pendingIntent
+            );
+        }
     }
 }

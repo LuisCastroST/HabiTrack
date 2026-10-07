@@ -20,8 +20,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         String CREATE_HABITS_TABLE = "CREATE TABLE " + HabitContract.HabitEntry.TABLE_NAME + " ("
                 + HabitContract.HabitEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + HabitContract.HabitEntry.COLUMN_NOMBRE + " TEXT NOT NULL, "
-                + HabitContract.HabitEntry.COLUMN_CATEGORIA + " TEXT, "
-                + HabitContract.HabitEntry.COLUMN_DIAS + " INTEGER DEFAULT 127, "
+                + HabitContract.HabitEntry.COLUMN_CATEGORIA + " TEXT DEFAULT 'General', "
+                + HabitContract.HabitEntry.COLUMN_DIAS + " INTEGER DEFAULT 30, "
                 + HabitContract.HabitEntry.COLUMN_COLOR + " TEXT DEFAULT '#4CAF50', "
                 + HabitContract.HabitEntry.COLUMN_EN_DASHBOARD + " INTEGER DEFAULT 1);";
 
@@ -29,16 +29,24 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + HabitContract.RegistroEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + HabitContract.RegistroEntry.COLUMN_HABITO_ID + " INTEGER, "
                 + HabitContract.RegistroEntry.COLUMN_FECHA + " TEXT NOT NULL, "
-                + HabitContract.RegistroEntry.COLUMN_COMPLETADO + " INTEGER DEFAULT 0);";
+                + HabitContract.RegistroEntry.COLUMN_COMPLETADO + " INTEGER DEFAULT 0, "
+                + "FOREIGN KEY(" + HabitContract.RegistroEntry.COLUMN_HABITO_ID + ") REFERENCES "
+                + HabitContract.HabitEntry.TABLE_NAME + "(" + HabitContract.HabitEntry._ID + ") ON DELETE CASCADE);";
 
         db.execSQL(CREATE_HABITS_TABLE);
         db.execSQL(CREATE_REGISTROS_TABLE);
     }
 
     @Override
+    public void onConfigure(SQLiteDatabase db) {
+        super.onConfigure(db);
+        db.setForeignKeyConstraintsEnabled(true);
+    }
+
+    @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + HabitContract.HabitEntry.TABLE_NAME);
         db.execSQL("DROP TABLE IF EXISTS " + HabitContract.RegistroEntry.TABLE_NAME);
+        db.execSQL("DROP TABLE IF EXISTS " + HabitContract.HabitEntry.TABLE_NAME);
         onCreate(db);
     }
 
@@ -51,6 +59,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(HabitContract.HabitEntry.COLUMN_COLOR, color);
         values.put(HabitContract.HabitEntry.COLUMN_EN_DASHBOARD, 1);
         return db.insert(HabitContract.HabitEntry.TABLE_NAME, null, values);
+    }
+
+    public long agregarHabito(String nombre) {
+        return insertarHabito(nombre, "General", 30, "#4CAF50");
     }
 
     public Cursor obtenerTodosLosHabitos() {
@@ -93,6 +105,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 HabitContract.RegistroEntry.COLUMN_HABITO_ID + " = ? AND " + HabitContract.RegistroEntry.COLUMN_FECHA + " = ? AND " + HabitContract.RegistroEntry.COLUMN_COMPLETADO + " = 1",
                 new String[]{String.valueOf(habitoId), fecha},
                 null, null, null);
+
         boolean completado = cursor != null && cursor.getCount() > 0;
         if (cursor != null) {
             cursor.close();

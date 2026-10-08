@@ -133,4 +133,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.delete(HabitContract.HabitEntry.TABLE_NAME, HabitContract.HabitEntry._ID + " = ?", new String[]{String.valueOf(id)});
         db.delete(HabitContract.RegistroEntry.TABLE_NAME, HabitContract.RegistroEntry.COLUMN_HABITO_ID + " = ?", new String[]{String.valueOf(id)});
     }
+
+    public void reiniciarTodo() {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(HabitContract.RegistroEntry.TABLE_NAME, null, null);
+        db.delete(HabitContract.HabitEntry.TABLE_NAME, null, null);
+        db.close();
+    }
+
+
 }

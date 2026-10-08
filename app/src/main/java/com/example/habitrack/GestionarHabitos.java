@@ -87,6 +87,8 @@ public class GestionarHabitos extends AppCompatActivity {
                         LinearLayout.LayoutParams paramsText = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
                         tvInfo.setLayoutParams(paramsText);
 
+                        tvInfo.setOnClickListener(v -> mostrarTimePicker(id, nombre));
+
                         Switch switchDashboard = new Switch(this);
                         switchDashboard.setChecked(enDashboard);
                         switchDashboard.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -95,10 +97,7 @@ public class GestionarHabitos extends AppCompatActivity {
 
                         Button btnEliminar = new Button(this);
                         btnEliminar.setText("X");
-                        btnEliminar.setOnClickListener(v -> {
-                            dbHelper.eliminarHabito(id);
-                            cargarListaHabitos();
-                        });
+                        btnEliminar.setOnClickListener(v -> mostrarDialogoConfirmacionEliminar(id, nombre));
 
                         fila.addView(tvColor);
                         fila.addView(tvInfo);
@@ -111,6 +110,82 @@ public class GestionarHabitos extends AppCompatActivity {
             }
             cursor.close();
         }
+    }
+
+    public void actualizarNotificacionHabito(int habitoId, String nombreHabito, int nuevaHora, int nuevoMinuto) {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+
+        Intent intent = new Intent(this, NotificationReceiver.class);
+        intent.putExtra("HABITO_NOMBRE", nombreHabito);
+        intent.putExtra("HABITO_ID", habitoId);
+
+        PendingIntent pendingIntentAntiguo = PendingIntent.getBroadcast(
+                this,
+                habitoId,
+                intent,
+                PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        if (pendingIntentAntiguo != null && alarmManager != null) {
+            alarmManager.cancel(pendingIntentAntiguo);
+            pendingIntentAntiguo.cancel();
+        }
+
+        PendingIntent nuevoPendingIntent = PendingIntent.getBroadcast(
+                this,
+                habitoId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.HOUR_OF_DAY, nuevaHora);
+        calendar.set(Calendar.MINUTE, nuevoMinuto);
+        calendar.set(Calendar.SECOND, 0);
+
+        if (calendar.before(Calendar.getInstance())) {
+            calendar.add(Calendar.DATE, 1);
+        }
+
+        if (alarmManager != null) {
+            alarmManager.setRepeating(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.getTimeInMillis(),
+                    AlarmManager.INTERVAL_DAY,
+                    nuevoPendingIntent
+            );
+        }
+    }
+
+    private void cancelarAlarmaHabito(int habitoId) {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, NotificationReceiver.class);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                this,
+                habitoId,
+                intent,
+                PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        if (pendingIntent != null && alarmManager != null) {
+            alarmManager.cancel(pendingIntent);
+            pendingIntent.cancel();
+        }
+    }
+
+    private void mostrarDialogoConfirmacionEliminar(int habitoId, String nombreHabito) {
+        new AlertDialog.Builder(this)
+                .setTitle("Eliminar hábito")
+                .setMessage("¿Estás seguro de que deseas eliminar '" + nombreHabito + "'?")
+                .setPositiveButton("Eliminar", (dialog, which) -> {
+                    cancelarAlarmaHabito(habitoId);
+                    dbHelper.eliminarHabito(habitoId);
+                    cargarListaHabitos();
+                    Toast.makeText(this, "Hábito eliminado", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 
     private void mostrarDialogoCrearHabito() {
@@ -172,19 +247,11 @@ public class GestionarHabitos extends AppCompatActivity {
         builder.show();
     }
 
-    @Override
-    protected void onDestroy() {
-        if (dbHelper != null) {
-            dbHelper.close();
-        }
-        super.onDestroy();
-    }
-
     private void preguntarActivarNotificacion(int habitoId, String nombreHabito) {
         new AlertDialog.Builder(this)
                 .setTitle("Recordatorio")
                 .setMessage("¿Quieres programar un recordatorio para '" + nombreHabito + "'?")
-                .setPositiveButton("Sí, elegir hora", (dialog, which) -> {
+                .setPositiveButton("Elegir hora", (dialog, which) -> {
                     mostrarTimePicker(habitoId, nombreHabito);
                 })
                 .setNegativeButton("No por ahora", null)
@@ -198,43 +265,18 @@ public class GestionarHabitos extends AppCompatActivity {
         int minutoActual = c.get(Calendar.MINUTE);
 
         TimePickerDialog timePicker = new TimePickerDialog(this, (view, hourOfDay, minute) -> {
-            programarAlarmaHabito(habitoId, nombreHabito, hourOfDay, minute);
+            actualizarNotificacionHabito(habitoId, nombreHabito, hourOfDay, minute);
             Toast.makeText(this, "Recordatorio programado a las " + String.format("%02d:%02d", hourOfDay, minute), Toast.LENGTH_SHORT).show();
         }, horaActual, minutoActual, true);
 
         timePicker.show();
     }
 
-    private void programarAlarmaHabito(int habitoId, String nombreHabito, int hora, int minuto) {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        Intent intent = new Intent(this, NotificationReceiver.class);
-
-        intent.putExtra("HABITO_NOMBRE", nombreHabito);
-        intent.putExtra("HABITO_ID", habitoId);
-
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                this,
-                habitoId,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.HOUR_OF_DAY, hora);
-        calendar.set(Calendar.MINUTE, minuto);
-        calendar.set(Calendar.SECOND, 0);
-
-        if (calendar.getTimeInMillis() < System.currentTimeMillis()) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1);
+    @Override
+    protected void onDestroy() {
+        if (dbHelper != null) {
+            dbHelper.close();
         }
-
-        if (alarmManager != null) {
-            alarmManager.setRepeating(
-                    AlarmManager.RTC_WAKEUP,
-                    calendar.getTimeInMillis(),
-                    AlarmManager.INTERVAL_DAY,
-                    pendingIntent
-            );
-        }
+        super.onDestroy();
     }
 }

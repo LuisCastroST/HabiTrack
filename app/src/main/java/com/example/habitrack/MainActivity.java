@@ -264,13 +264,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void mostrarDialogoReiniciar() {
-        new AlertDialog.Builder(MainActivity.this)
-                .setTitle("Reiniciar Progreso")
-                .setMessage("Deseas reiniciar tu racha a 0?")
+        new AlertDialog.Builder(this)
+                .setTitle("Reiniciar progreso")
+                .setMessage("Deseas reiniciar todo el progrso?")
                 .setPositiveButton("Reiniciar", (dialog, which) -> {
-                    sharedPreferences.edit().putInt(KEY_RACHA, 0).apply();
-                    actualizarTextoRacha();
-                    Toast.makeText(MainActivity.this, "Progreso reiniciado", Toast.LENGTH_SHORT).show();
+                    DatabaseHelper dbHelper = new DatabaseHelper(MainActivity.this);
+                    dbHelper.reiniciarTodo();
+                    Toast.makeText(MainActivity.this, "Progreso reiniciado correctamente", Toast.LENGTH_SHORT).show();
+                    recreate();
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();

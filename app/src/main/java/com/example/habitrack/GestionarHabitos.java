@@ -1,10 +1,12 @@
 package com.example.habitrack;
 
+import android.Manifest;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -19,14 +21,39 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 
 public class GestionarHabitos extends AppCompatActivity {
 
     private DatabaseHelper dbHelper;
     private LinearLayout layoutListaHabitos;
     private Button btnNuevoHabito;
+    private FusedLocationProviderClient fusedLocationClient;
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
+    private int habitoIdSeleccionadoParaGps = -1;
+
+    private static class HabitoItem {
+        int id;
+        String nombre;
+        String categoria;
+        String colorHex;
+        boolean enDashboard;
+
+        HabitoItem(int id, String nombre, String categoria, String colorHex, boolean enDashboard) {
+            this.id = id;
+            this.nombre = nombre;
+            this.categoria = categoria;
+            this.colorHex = colorHex;
+            this.enDashboard = enDashboard;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,6 +61,8 @@ public class GestionarHabitos extends AppCompatActivity {
         setContentView(R.layout.activity_gestionar_habitos);
 
         dbHelper = new DatabaseHelper(this);
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
         layoutListaHabitos = findViewById(R.id.layoutListaHabitos);
         btnNuevoHabito = findViewById(R.id.btnNuevoHabito);
 
@@ -50,6 +79,9 @@ public class GestionarHabitos extends AppCompatActivity {
         layoutListaHabitos.removeAllViews();
         Cursor cursor = dbHelper.obtenerTodosLosHabitos();
 
+        List<HabitoItem> habitosFisicos = new ArrayList<>();
+        List<HabitoItem> habitosNormales = new ArrayList<>();
+
         if (cursor != null) {
             if (cursor.moveToFirst()) {
                 int idIndex = cursor.getColumnIndex(HabitContract.HabitEntry._ID);
@@ -62,54 +94,105 @@ public class GestionarHabitos extends AppCompatActivity {
                     if (idIndex != -1 && nombreIndex != -1) {
                         int id = cursor.getInt(idIndex);
                         String nombre = cursor.getString(nombreIndex);
-                        String categoria = cursor.getString(categoriaIndex);
+                        String categoria = (categoriaIndex != -1) ? cursor.getString(categoriaIndex) : "General";
                         String colorHex = (colorIndex != -1 && cursor.getString(colorIndex) != null) ? cursor.getString(colorIndex) : "#4CAF50";
-                        boolean enDashboard = cursor.getInt(enDashboardIndex) == 1;
+                        boolean enDashboard = (enDashboardIndex != -1) && (cursor.getInt(enDashboardIndex) == 1);
 
-                        LinearLayout fila = new LinearLayout(this);
-                        fila.setOrientation(LinearLayout.HORIZONTAL);
-                        fila.setPadding(0, 16, 0, 16);
-
-                        TextView tvColor = new TextView(this);
-                        tvColor.setText("   ");
-                        try {
-                            tvColor.setBackgroundColor(Color.parseColor(colorHex));
-                        } catch (Exception e) {
-                            tvColor.setBackgroundColor(Color.parseColor("#4CAF50"));
+                        HabitoItem item = new HabitoItem(id, nombre, categoria, colorHex, enDashboard);
+                        if ("Deporte".equalsIgnoreCase(categoria)) {
+                            habitosFisicos.add(item);
+                        } else {
+                            habitosNormales.add(item);
                         }
-                        LinearLayout.LayoutParams paramsColor = new LinearLayout.LayoutParams(30, LinearLayout.LayoutParams.MATCH_PARENT);
-                        paramsColor.setMargins(0, 0, 16, 0);
-                        tvColor.setLayoutParams(paramsColor);
-
-                        TextView tvInfo = new TextView(this);
-                        tvInfo.setText(nombre + " (" + categoria + ")");
-                        tvInfo.setTextSize(16);
-                        LinearLayout.LayoutParams paramsText = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
-                        tvInfo.setLayoutParams(paramsText);
-
-                        tvInfo.setOnClickListener(v -> mostrarTimePicker(id, nombre));
-
-                        Switch switchDashboard = new Switch(this);
-                        switchDashboard.setChecked(enDashboard);
-                        switchDashboard.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                            dbHelper.actualizarVisibilidadDashboard(id, isChecked);
-                        });
-
-                        Button btnEliminar = new Button(this);
-                        btnEliminar.setText("X");
-                        btnEliminar.setOnClickListener(v -> mostrarDialogoConfirmacionEliminar(id, nombre));
-
-                        fila.addView(tvColor);
-                        fila.addView(tvInfo);
-                        fila.addView(switchDashboard);
-                        fila.addView(btnEliminar);
-
-                        layoutListaHabitos.addView(fila);
                     }
                 } while (cursor.moveToNext());
             }
             cursor.close();
         }
+
+        if (!habitosFisicos.isEmpty()) {
+            TextView tvHeaderFisicos = new TextView(this);
+            tvHeaderFisicos.setText("--- Hábitos Físicos ---");
+            tvHeaderFisicos.setTextSize(15);
+            tvHeaderFisicos.setTypeface(null, android.graphics.Typeface.BOLD);
+            tvHeaderFisicos.setPadding(0, 8, 0, 8);
+            layoutListaHabitos.addView(tvHeaderFisicos);
+
+            for (HabitoItem item : habitosFisicos) {
+                layoutListaHabitos.addView(crearFilaHabito(item, true));
+            }
+        }
+
+        if (!habitosNormales.isEmpty()) {
+            TextView tvHeaderNormales = new TextView(this);
+            tvHeaderNormales.setText("--- Hábitos Normales ---");
+            tvHeaderNormales.setTextSize(15);
+            tvHeaderNormales.setTypeface(null, android.graphics.Typeface.BOLD);
+            tvHeaderNormales.setPadding(0, 16, 0, 8);
+            layoutListaHabitos.addView(tvHeaderNormales);
+
+            for (HabitoItem item : habitosNormales) {
+                layoutListaHabitos.addView(crearFilaHabito(item, false));
+            }
+        }
+    }
+
+    private LinearLayout crearFilaHabito(HabitoItem item, boolean esFisico) {
+        LinearLayout fila = new LinearLayout(this);
+        fila.setOrientation(LinearLayout.HORIZONTAL);
+        fila.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
+        fila.setPadding(0, 16, 0, 16);
+
+        TextView tvColor = new TextView(this);
+        tvColor.setText("   ");
+        try {
+            tvColor.setBackgroundColor(Color.parseColor(item.colorHex));
+        } catch (Exception e) {
+            tvColor.setBackgroundColor(Color.parseColor("#4CAF50"));
+        }
+        LinearLayout.LayoutParams paramsColor = new LinearLayout.LayoutParams(30, LinearLayout.LayoutParams.MATCH_PARENT);
+        paramsColor.setMargins(0, 0, 16, 0);
+        tvColor.setLayoutParams(paramsColor);
+
+        TextView tvInfo = new TextView(this);
+        tvInfo.setText(item.nombre + " (" + item.categoria + ")");
+        tvInfo.setTextSize(16);
+        LinearLayout.LayoutParams paramsText = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+        tvInfo.setLayoutParams(paramsText);
+        tvInfo.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        tvInfo.setOnClickListener(v -> mostrarTimePicker(item.id, item.nombre));
+
+        Switch switchDashboard = new Switch(this);
+        switchDashboard.setChecked(item.enDashboard);
+        switchDashboard.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            dbHelper.actualizarVisibilidadDashboard(item.id, isChecked);
+        });
+
+        fila.addView(tvColor);
+        fila.addView(tvInfo);
+
+        if (esFisico) {
+            Button btnGps = new Button(this);
+            btnGps.setText("📍");
+            btnGps.setOnClickListener(v -> {
+                Intent intent = new Intent(GestionarHabitos.this, PantallaActividadFisica.class);
+                intent.putExtra("HABITO_ID", item.id);
+                startActivity(intent);
+            });
+            fila.addView(btnGps);
+        }
+
+        fila.addView(switchDashboard);
+
+        Button btnEliminar = new Button(this);
+        btnEliminar.setText("X");
+        btnEliminar.setOnClickListener(v -> mostrarDialogoConfirmacionEliminar(item.id, item.nombre));
+        fila.addView(btnEliminar);
+
+        return fila;
     }
 
     public void actualizarNotificacionHabito(int habitoId, String nombreHabito, int nuevaHora, int nuevoMinuto) {
@@ -177,7 +260,7 @@ public class GestionarHabitos extends AppCompatActivity {
     private void mostrarDialogoConfirmacionEliminar(int habitoId, String nombreHabito) {
         new AlertDialog.Builder(this)
                 .setTitle("Eliminar hábito")
-                .setMessage("¿Estás seguro de que deseas eliminar '" + nombreHabito + "'?")
+                .setMessage("Estás seguro de que deseas eliminar '" + nombreHabito + "'?")
                 .setPositiveButton("Eliminar", (dialog, which) -> {
                     cancelarAlarmaHabito(habitoId);
                     dbHelper.eliminarHabito(habitoId);
@@ -250,7 +333,7 @@ public class GestionarHabitos extends AppCompatActivity {
     private void preguntarActivarNotificacion(int habitoId, String nombreHabito) {
         new AlertDialog.Builder(this)
                 .setTitle("Recordatorio")
-                .setMessage("¿Quieres programar un recordatorio para '" + nombreHabito + "'?")
+                .setMessage("Quieres programar un recordatorio para '" + nombreHabito + "'?")
                 .setPositiveButton("Elegir hora", (dialog, which) -> {
                     mostrarTimePicker(habitoId, nombreHabito);
                 })

@@ -13,6 +13,8 @@ public final class HabitContract {
         public static final String COLUMN_DIAS = "dias";
         public static final String COLUMN_COLOR = "color";
         public static final String COLUMN_EN_DASHBOARD = "en_dashboard";
+        public static final String COLUMN_LATITUD = "latitud";
+        public static final String COLUMN_LONGITUD = "longitud";
     }
 
     public static class RegistroEntry implements BaseColumns {

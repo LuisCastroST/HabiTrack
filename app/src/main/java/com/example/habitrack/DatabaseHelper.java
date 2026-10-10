@@ -9,7 +9,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "habitrack.db";
-    private static final int DATABASE_VERSION = 5;
+    private static final int DATABASE_VERSION = 7;
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -23,7 +23,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + HabitContract.HabitEntry.COLUMN_CATEGORIA + " TEXT DEFAULT 'General', "
                 + HabitContract.HabitEntry.COLUMN_DIAS + " INTEGER DEFAULT 30, "
                 + HabitContract.HabitEntry.COLUMN_COLOR + " TEXT DEFAULT '#4CAF50', "
-                + HabitContract.HabitEntry.COLUMN_EN_DASHBOARD + " INTEGER DEFAULT 1);";
+                + HabitContract.HabitEntry.COLUMN_EN_DASHBOARD + " INTEGER DEFAULT 1, "
+                + HabitContract.HabitEntry.COLUMN_LATITUD + " REAL DEFAULT 0.0, "
+                + HabitContract.HabitEntry.COLUMN_LONGITUD + " REAL DEFAULT 0.0);";
 
         String CREATE_REGISTROS_TABLE = "CREATE TABLE " + HabitContract.RegistroEntry.TABLE_NAME + " ("
                 + HabitContract.RegistroEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -84,6 +86,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.update(HabitContract.HabitEntry.TABLE_NAME, values, HabitContract.HabitEntry._ID + " = ?", new String[]{String.valueOf(id)});
     }
 
+    public boolean actualizarUbicacionHabito(int idHabito, double latitud, double longitud) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(HabitContract.HabitEntry.COLUMN_LATITUD, latitud);
+        values.put(HabitContract.HabitEntry.COLUMN_LONGITUD, longitud);
+
+        int filasAfectadas = db.update(
+                HabitContract.HabitEntry.TABLE_NAME,
+                values,
+                HabitContract.HabitEntry._ID + " = ?",
+                new String[]{String.valueOf(idHabito)}
+        );
+        db.close();
+        return filasAfectadas > 0;
+    }
+
     public void guardarEstadoHabitoFecha(int habitoId, String fecha, boolean completado) {
         SQLiteDatabase db = this.getWritableDatabase();
         db.delete(HabitContract.RegistroEntry.TABLE_NAME,
@@ -139,6 +157,28 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.delete(HabitContract.RegistroEntry.TABLE_NAME, null, null);
         db.delete(HabitContract.HabitEntry.TABLE_NAME, null, null);
         db.close();
+    }
+
+    public int calcularRachaHabito(int habitoId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        int racha = 0;
+
+        String query = "SELECT " + HabitContract.RegistroEntry.COLUMN_FECHA +
+                " FROM " + HabitContract.RegistroEntry.TABLE_NAME +
+                " WHERE " + HabitContract.RegistroEntry.COLUMN_HABITO_ID + " = ? AND " +
+                HabitContract.RegistroEntry.COLUMN_COMPLETADO + " = 1 " +
+                " ORDER BY " + HabitContract.RegistroEntry.COLUMN_FECHA + " DESC";
+
+        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(habitoId)});
+
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                racha = cursor.getCount();
+            }
+            cursor.close();
+        }
+        db.close();
+        return racha;
     }
 
 

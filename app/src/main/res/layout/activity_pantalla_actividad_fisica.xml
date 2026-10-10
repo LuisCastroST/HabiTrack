@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Modo Deporte al Aire Libre"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:paddingBottom="12dp"/>
+
+    <Spinner
+        android:id="@+id/spinnerModalidad"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="10dp"
+        android:layout_marginBottom="12dp"/>
+
+    <TextView
+        android:id="@+id/tvCoordenadas"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ubicación GPS: Buscando señal..."
+        android:textSize="14sp"
+        android:paddingBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btnFinalizarTrote"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Finalizar y Registrar Hábito"
+        android:backgroundTint="#4CAF50"
+        android:textColor="#FFFFFF"/>
+
+</LinearLayout>

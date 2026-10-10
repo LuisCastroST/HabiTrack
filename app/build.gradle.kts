@@ -43,4 +43,5 @@ dependencies {
     implementation("com.applandeo:material-calendar-view:1.9.2")
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
     implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.android.gms:play-services-location:21.1.0")
 }

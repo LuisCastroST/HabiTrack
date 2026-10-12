@@ -86,7 +86,7 @@ public class GestionarHabitos extends AppCompatActivity {
             if (cursor.moveToFirst()) {
                 int idIndex = cursor.getColumnIndex(HabitContract.HabitEntry._ID);
                 int nombreIndex = cursor.getColumnIndex(HabitContract.HabitEntry.COLUMN_NOMBRE);
-                int categoriaIndex = cursor.getColumnIndex(HabitContract.HabitEntry.COLUMN_CATEGORIA);
+                int categoriaIndex = cursor.getColumnIndex("categoria_nombre");
                 int colorIndex = cursor.getColumnIndex(HabitContract.HabitEntry.COLUMN_COLOR);
                 int enDashboardIndex = cursor.getColumnIndex(HabitContract.HabitEntry.COLUMN_EN_DASHBOARD);
 
@@ -99,7 +99,7 @@ public class GestionarHabitos extends AppCompatActivity {
                         boolean enDashboard = (enDashboardIndex != -1) && (cursor.getInt(enDashboardIndex) == 1);
 
                         HabitoItem item = new HabitoItem(id, nombre, categoria, colorHex, enDashboard);
-                        if ("Deporte".equalsIgnoreCase(categoria)) {
+                        if ("Actividad fisica".equalsIgnoreCase(categoria) || "Actividad Física".equalsIgnoreCase(categoria)) {
                             habitosFisicos.add(item);
                         } else {
                             habitosNormales.add(item);
@@ -112,7 +112,7 @@ public class GestionarHabitos extends AppCompatActivity {
 
         if (!habitosFisicos.isEmpty()) {
             TextView tvHeaderFisicos = new TextView(this);
-            tvHeaderFisicos.setText("--- Hábitos Físicos ---");
+            tvHeaderFisicos.setText("--- Actividades Físicas ---");
             tvHeaderFisicos.setTextSize(15);
             tvHeaderFisicos.setTypeface(null, android.graphics.Typeface.BOLD);
             tvHeaderFisicos.setPadding(0, 8, 0, 8);
@@ -284,8 +284,23 @@ public class GestionarHabitos extends AppCompatActivity {
         layout.addView(edtNombre);
 
         final Spinner spinnerCategoria = new Spinner(this);
-        String[] categorias = {"Salud", "Estudio", "Deporte", "Dinero", "General"};
-        ArrayAdapter<String> adapterCat = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, categorias);
+        Cursor cursorCat = dbHelper.obtenerCategorias();
+        List<String> nombresCategorias = new ArrayList<>();
+        List<Integer> idsCategorias = new ArrayList<>();
+
+        if (cursorCat != null && cursorCat.moveToFirst()) {
+            int idIndex = cursorCat.getColumnIndex(HabitContract.CategoriaEntry._ID);
+            int nombreIndex = cursorCat.getColumnIndex(HabitContract.CategoriaEntry.COLUMN_NOMBRE);
+            do {
+                if (idIndex != -1 && nombreIndex != -1) {
+                    idsCategorias.add(cursorCat.getInt(idIndex));
+                    nombresCategorias.add(cursorCat.getString(nombreIndex));
+                }
+            } while (cursorCat.moveToNext());
+            cursorCat.close();
+        }
+
+        ArrayAdapter<String> adapterCat = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, nombresCategorias);
         spinnerCategoria.setAdapter(adapterCat);
         layout.addView(spinnerCategoria);
 
@@ -305,7 +320,9 @@ public class GestionarHabitos extends AppCompatActivity {
 
         builder.setPositiveButton("Guardar", (dialog, which) -> {
             String nombre = edtNombre.getText().toString().trim();
-            String categoria = spinnerCategoria.getSelectedItem().toString();
+            int posicionSeleccionada = spinnerCategoria.getSelectedItemPosition();
+            int categoriaId = (idsCategorias.isEmpty() || posicionSeleccionada == -1) ? 1 : idsCategorias.get(posicionSeleccionada);
+
             String colorHex = valoresColores[spinnerColor.getSelectedItemPosition()];
             String diasStr = edtDias.getText().toString().trim();
 
@@ -315,7 +332,7 @@ public class GestionarHabitos extends AppCompatActivity {
             }
 
             int dias = Integer.parseInt(diasStr);
-            long id = dbHelper.insertarHabito(nombre, categoria, dias, colorHex);
+            long id = dbHelper.insertarHabito(nombre, categoriaId, dias, colorHex);
 
             if (id != -1) {
                 Toast.makeText(this, "Hábito guardado", Toast.LENGTH_SHORT).show();

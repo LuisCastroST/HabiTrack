@@ -8,7 +8,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Modo Deporte al Aire Libre"
+        android:text="Actividad Física al Aire Libre"
         android:textSize="20sp"
         android:textStyle="bold"
         android:gravity="center"

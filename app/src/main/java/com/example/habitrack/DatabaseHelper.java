@@ -9,7 +9,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "habitrack.db";
-    private static final int DATABASE_VERSION = 7;
+    private static final int DATABASE_VERSION = 9;
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -17,15 +17,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
+        String CREATE_CATEGORIAS_TABLE = "CREATE TABLE " + HabitContract.CategoriaEntry.TABLE_NAME + " ("
+                + HabitContract.CategoriaEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + HabitContract.CategoriaEntry.COLUMN_NOMBRE + " TEXT NOT NULL);";
+
         String CREATE_HABITS_TABLE = "CREATE TABLE " + HabitContract.HabitEntry.TABLE_NAME + " ("
                 + HabitContract.HabitEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + HabitContract.HabitEntry.COLUMN_NOMBRE + " TEXT NOT NULL, "
-                + HabitContract.HabitEntry.COLUMN_CATEGORIA + " TEXT DEFAULT 'General', "
+                + HabitContract.HabitEntry.COLUMN_CATEGORIA_ID + " INTEGER, "
                 + HabitContract.HabitEntry.COLUMN_DIAS + " INTEGER DEFAULT 30, "
                 + HabitContract.HabitEntry.COLUMN_COLOR + " TEXT DEFAULT '#4CAF50', "
                 + HabitContract.HabitEntry.COLUMN_EN_DASHBOARD + " INTEGER DEFAULT 1, "
                 + HabitContract.HabitEntry.COLUMN_LATITUD + " REAL DEFAULT 0.0, "
-                + HabitContract.HabitEntry.COLUMN_LONGITUD + " REAL DEFAULT 0.0);";
+                + HabitContract.HabitEntry.COLUMN_LONGITUD + " REAL DEFAULT 0.0, "
+                + "FOREIGN KEY(" + HabitContract.HabitEntry.COLUMN_CATEGORIA_ID + ") REFERENCES "
+                + HabitContract.CategoriaEntry.TABLE_NAME + "(" + HabitContract.CategoriaEntry._ID + ") ON DELETE SET NULL);";
 
         String CREATE_REGISTROS_TABLE = "CREATE TABLE " + HabitContract.RegistroEntry.TABLE_NAME + " ("
                 + HabitContract.RegistroEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -35,8 +41,24 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + "FOREIGN KEY(" + HabitContract.RegistroEntry.COLUMN_HABITO_ID + ") REFERENCES "
                 + HabitContract.HabitEntry.TABLE_NAME + "(" + HabitContract.HabitEntry._ID + ") ON DELETE CASCADE);";
 
+        String CREATE_RECORDATORIOS_TABLE = "CREATE TABLE " + HabitContract.RecordatorioEntry.TABLE_NAME + " ("
+                + HabitContract.RecordatorioEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + HabitContract.RecordatorioEntry.COLUMN_HABITO_ID + " INTEGER, "
+                + HabitContract.RecordatorioEntry.COLUMN_HORA + " INTEGER NOT NULL, "
+                + HabitContract.RecordatorioEntry.COLUMN_MINUTO + " INTEGER NOT NULL, "
+                + "FOREIGN KEY(" + HabitContract.RecordatorioEntry.COLUMN_HABITO_ID + ") REFERENCES "
+                + HabitContract.HabitEntry.TABLE_NAME + "(" + HabitContract.HabitEntry._ID + ") ON DELETE CASCADE);";
+
+        db.execSQL(CREATE_CATEGORIAS_TABLE);
         db.execSQL(CREATE_HABITS_TABLE);
         db.execSQL(CREATE_REGISTROS_TABLE);
+        db.execSQL(CREATE_RECORDATORIOS_TABLE);
+
+        db.execSQL("INSERT INTO " + HabitContract.CategoriaEntry.TABLE_NAME + " (" + HabitContract.CategoriaEntry.COLUMN_NOMBRE + ") VALUES ('Salud');");
+        db.execSQL("INSERT INTO " + HabitContract.CategoriaEntry.TABLE_NAME + " (" + HabitContract.CategoriaEntry.COLUMN_NOMBRE + ") VALUES ('Estudio');");
+        db.execSQL("INSERT INTO " + HabitContract.CategoriaEntry.TABLE_NAME + " (" + HabitContract.CategoriaEntry.COLUMN_NOMBRE + ") VALUES ('Actividad Física');");
+        db.execSQL("INSERT INTO " + HabitContract.CategoriaEntry.TABLE_NAME + " (" + HabitContract.CategoriaEntry.COLUMN_NOMBRE + ") VALUES ('Dinero');");
+        db.execSQL("INSERT INTO " + HabitContract.CategoriaEntry.TABLE_NAME + " (" + HabitContract.CategoriaEntry.COLUMN_NOMBRE + ") VALUES ('General');");
     }
 
     @Override
@@ -48,28 +70,52 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         db.execSQL("DROP TABLE IF EXISTS " + HabitContract.RegistroEntry.TABLE_NAME);
+        db.execSQL("DROP TABLE IF EXISTS " + HabitContract.RecordatorioEntry.TABLE_NAME);
         db.execSQL("DROP TABLE IF EXISTS " + HabitContract.HabitEntry.TABLE_NAME);
+        db.execSQL("DROP TABLE IF EXISTS " + HabitContract.CategoriaEntry.TABLE_NAME);
         onCreate(db);
     }
 
-    public long insertarHabito(String nombre, String categoria, int dias, String color) {
+    public long agregarHabito(String nombre) {
+        return insertarHabito(nombre, 5, 30, "#4CAF50");
+    }
+
+    public long insertarRecordatorio(int habitoId, int hora, int minuto) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(HabitContract.RecordatorioEntry.COLUMN_HABITO_ID, habitoId);
+        values.put(HabitContract.RecordatorioEntry.COLUMN_HORA, hora);
+        values.put(HabitContract.RecordatorioEntry.COLUMN_MINUTO, minuto);
+        return db.insert(HabitContract.RecordatorioEntry.TABLE_NAME, null, values);
+    }
+
+    public long insertarHabito(String nombre, int categoriaId, int dias, String color) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(HabitContract.HabitEntry.COLUMN_NOMBRE, nombre);
-        values.put(HabitContract.HabitEntry.COLUMN_CATEGORIA, categoria);
+        values.put(HabitContract.HabitEntry.COLUMN_CATEGORIA_ID, categoriaId);
         values.put(HabitContract.HabitEntry.COLUMN_DIAS, dias);
         values.put(HabitContract.HabitEntry.COLUMN_COLOR, color);
         values.put(HabitContract.HabitEntry.COLUMN_EN_DASHBOARD, 1);
         return db.insert(HabitContract.HabitEntry.TABLE_NAME, null, values);
     }
 
-    public long agregarHabito(String nombre) {
-        return insertarHabito(nombre, "General", 30, "#4CAF50");
-    }
+
 
     public Cursor obtenerTodosLosHabitos() {
         SQLiteDatabase db = this.getReadableDatabase();
-        return db.query(HabitContract.HabitEntry.TABLE_NAME, null, null, null, null, null, null);
+        String query = "SELECT h.*, c." + HabitContract.CategoriaEntry.COLUMN_NOMBRE + " AS categoria_nombre"
+                + " FROM " + HabitContract.HabitEntry.TABLE_NAME + " h"
+                + " LEFT JOIN " + HabitContract.CategoriaEntry.TABLE_NAME + " c"
+                + " ON h." + HabitContract.HabitEntry.COLUMN_CATEGORIA_ID + " = c." + HabitContract.CategoriaEntry._ID;
+        return db.rawQuery(query, null);
+    }
+
+    public Cursor obtenerRecordatoriosPorHabito(int habitoId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.query(HabitContract.RecordatorioEntry.TABLE_NAME, null,
+                HabitContract.RecordatorioEntry.COLUMN_HABITO_ID + " = ?",
+                new String[]{String.valueOf(habitoId)}, null, null, null);
     }
 
     public Cursor obtenerHabitosDashboard() {
@@ -131,10 +177,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return completado;
     }
 
+    public Cursor obtenerCategorias() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        return db.query(HabitContract.CategoriaEntry.TABLE_NAME, null, null, null, null, null, null);
+    }
+
     public Cursor obtenerHabitosCompletadosPorFecha(String fecha) {
         SQLiteDatabase db = this.getReadableDatabase();
-        String query = "SELECT h." + HabitContract.HabitEntry.COLUMN_NOMBRE + ", h." + HabitContract.HabitEntry.COLUMN_CATEGORIA + ", h." + HabitContract.HabitEntry.COLUMN_COLOR
+        String query = "SELECT h." + HabitContract.HabitEntry.COLUMN_NOMBRE + ", c." + HabitContract.CategoriaEntry.COLUMN_NOMBRE + " AS categoria_nombre, h." + HabitContract.HabitEntry.COLUMN_COLOR
                 + " FROM " + HabitContract.HabitEntry.TABLE_NAME + " h"
+                + " LEFT JOIN " + HabitContract.CategoriaEntry.TABLE_NAME + " c ON h." + HabitContract.HabitEntry.COLUMN_CATEGORIA_ID + " = c." + HabitContract.CategoriaEntry._ID
                 + " INNER JOIN " + HabitContract.RegistroEntry.TABLE_NAME + " r"
                 + " ON h." + HabitContract.HabitEntry._ID + " = r." + HabitContract.RegistroEntry.COLUMN_HABITO_ID
                 + " WHERE r." + HabitContract.RegistroEntry.COLUMN_FECHA + " = ? AND r." + HabitContract.RegistroEntry.COLUMN_COMPLETADO + " = 1";

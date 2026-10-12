@@ -57,7 +57,7 @@ public class CalendarioActivity extends AppCompatActivity {
         if (cursor != null && cursor.moveToFirst()) {
             do {
                 int nombreIdx = cursor.getColumnIndex(HabitContract.HabitEntry.COLUMN_NOMBRE);
-                int catIdx = cursor.getColumnIndex(HabitContract.HabitEntry.COLUMN_CATEGORIA);
+                int catIdx = cursor.getColumnIndex(HabitContract.HabitEntry.COLUMN_CATEGORIA_ID);
                 int colorIdx = cursor.getColumnIndex(HabitContract.HabitEntry.COLUMN_COLOR);
 
                 if (nombreIdx != -1) {

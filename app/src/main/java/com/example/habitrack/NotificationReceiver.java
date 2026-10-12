@@ -15,6 +15,11 @@ public class NotificationReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String nombreHabito = intent.getStringExtra("HABITO_NOMBRE");
+
+        if (nombreHabito == null || nombreHabito.trim().isEmpty()) {
+            nombreHabito = "Actividad Física";
+        }
+
         int habitoId = intent.getIntExtra("HABITO_ID", 0);
 
         String channelId = "habitrack_canal_recordatorios";
@@ -26,7 +31,9 @@ public class NotificationReceiver extends BroadcastReceiver {
                     "Recordatorios de Hábitos",
                     NotificationManager.IMPORTANCE_HIGH
             );
-            notificationManager.createNotificationChannel(channel);
+            if (notificationManager != null) {
+                notificationManager.createNotificationChannel(channel);
+            }
         }
 
         Intent tapIntent = new Intent(context, GestionarHabitos.class);
@@ -46,6 +53,8 @@ public class NotificationReceiver extends BroadcastReceiver {
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true);
 
-        notificationManager.notify(habitoId, builder.build());
+        if (notificationManager != null) {
+            notificationManager.notify(habitoId, builder.build());
+        }
     }
 }

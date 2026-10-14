@@ -29,6 +29,14 @@
         android:textSize="14sp"
         android:paddingBottom="8dp"/>
 
+    <WebView
+        android:id="@+id/webViewMapa"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"/>
+
     <Button
         android:id="@+id/btnFinalizarTrote"
         android:layout_width="match_parent"

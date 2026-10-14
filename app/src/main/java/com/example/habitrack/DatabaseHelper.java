@@ -225,13 +225,37 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         if (cursor != null) {
             if (cursor.moveToFirst()) {
-                racha = cursor.getCount();
+                try {
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+                    java.util.Calendar cal = java.util.Calendar.getInstance();
+
+                    String fechaStr = cursor.getString(0);
+                    java.util.Date fechaAnterior = sdf.parse(fechaStr);
+
+                    racha = 1;
+
+                    while (cursor.moveToNext()) {
+                        String fechaActualStr = cursor.getString(0);
+                        java.util.Date fechaActual = sdf.parse(fechaActualStr);
+
+                        long diferenciaMillis = fechaAnterior.getTime() - fechaActual.getTime();
+                        long diasDiferencia = diferenciaMillis / (1000 * 60 * 60 * 24);
+
+                        if (diasDiferencia == 1) {
+                            racha++;
+                            fechaAnterior = fechaActual;
+                        } else if (diasDiferencia == 0) {
+                            continue;
+                        } else {
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
             cursor.close();
         }
         db.close();
         return racha;
     }
-
-
-}

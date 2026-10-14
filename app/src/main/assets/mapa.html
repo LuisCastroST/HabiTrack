@@ -24,15 +24,43 @@
             subdomains: 'abc'
         }).addTo(map);
 
-        var marker = L.marker([-20.2133, -70.1503]).addTo(map)
-            .bindPopup('Ubicación HabiTrack')
+        var marcadorUsuario = L.marker([-20.2133, -70.1503]).addTo(map)
+            .bindPopup('Mi ubicación')
             .openPopup();
+
+        var marcadorObjetivo = null;
 
         function actualizarUbicacion(lat, lng) {
             var nuevaPos = [lat, lng];
             map.setView(nuevaPos, 16);
-            marker.setLatLng(nuevaPos);
+            marcadorUsuario.setLatLng(nuevaPos);
         }
+
+        map.on('click', function(e) {
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng;
+
+            if (marcadorObjetivo) {
+                marcadorObjetivo.setLatLng(e.latlng);
+            } else {
+                marcadorObjetivo = L.marker([lat, lng], {
+                    icon: L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    })
+                }).addTo(map);
+            }
+            marcadorObjetivo.bindPopup("Meta seleccionada").openPopup();
+
+            if (window.AndroidBridge) {
+                window.AndroidBridge.onObjetivoSeleccionado(lat, lng);
+            }
+        });
+
     } catch (e) {
         document.body.innerHTML = "<h3 style='color:red; padding:20px;'>Error JS: " + e.message + "</h3>";
     }

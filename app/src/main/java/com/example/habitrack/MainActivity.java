@@ -43,8 +43,6 @@ public class MainActivity extends AppCompatActivity {
     private DatabaseHelper dbHelper;
     private SharedPreferences sharedPreferences;
     private static final String PREFS_NAME = "HabiTrackPrefs";
-    private static final String KEY_RACHA = "racha_dias";
-    private static final String KEY_LAST_DATE = "ultima_fecha";
     private static final String KEY_MODO_OSCURO = "modo_oscuro";
 
     @Override
@@ -122,7 +120,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        procesarCicloDiario();
         actualizarTextoRacha();
         cargarHabitosDashboard();
     }
@@ -130,22 +127,6 @@ public class MainActivity extends AppCompatActivity {
     private String obtenerFechaHoy() {
         return new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
     }
-
-    private void procesarCicloDiario() {
-        String fechaHoy = obtenerFechaHoy();
-        String ultimaFecha = sharedPreferences.getString(KEY_LAST_DATE, "");
-
-        if (ultimaFecha.isEmpty()) {
-            sharedPreferences.edit().putString(KEY_LAST_DATE, fechaHoy).apply();
-            return;
-        }
-
-        if (!ultimaFecha.equals(fechaHoy)) {
-            evaluarCumplimientoFecha(ultimaFecha);
-            sharedPreferences.edit().putString(KEY_LAST_DATE, fechaHoy).apply();
-        }
-    }
-
     private void mostrarDialogoCerrarSesion() {
         new AlertDialog.Builder(MainActivity.this)
                 .setTitle("Cerrar Sesión")
@@ -153,35 +134,6 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton("Cerrar Sesión", (dialog, which) -> cerrarSesion())
                 .setNegativeButton("Cancelar", null)
                 .show();
-    }
-
-    private void evaluarCumplimientoFecha(String fecha) {
-        Cursor cursor = dbHelper.obtenerHabitosDashboard();
-        int total = 0;
-        int completados = 0;
-
-        if (cursor != null) {
-            if (cursor.moveToFirst()) {
-                int idIndex = cursor.getColumnIndex(HabitContract.HabitEntry._ID);
-                do {
-                    if (idIndex != -1) {
-                        int habitoId = cursor.getInt(idIndex);
-                        total++;
-                        if (dbHelper.estaCompletadoEnFecha(habitoId, fecha)) {
-                            completados++;
-                        }
-                    }
-                } while (cursor.moveToNext());
-            }
-            cursor.close();
-        }
-
-        int rachaActual = sharedPreferences.getInt(KEY_RACHA, 0);
-        if (total > 0 && completados == total) {
-            sharedPreferences.edit().putInt(KEY_RACHA, rachaActual + 1).apply();
-        } else if (total > 0 && completados < total) {
-            sharedPreferences.edit().putInt(KEY_RACHA, 0).apply();
-        }
     }
 
     private void cargarHabitosDashboard() {
@@ -257,10 +209,27 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void actualizarTextoRacha() {
-        int racha = sharedPreferences.getInt(KEY_RACHA, 0);
-        if (tvRacha != null) {
-            tvRacha.setText("Racha: " + racha + " días");
+        if (tvRacha == null) return;
+        Cursor cursor = dbHelper.obtenerHabitosDashboard();
+        int rachaMaxima = 0;
+
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                int idIndex = cursor.getColumnIndex(HabitContract.HabitEntry._ID);
+                do {
+                    if (idIndex != -1) {
+                        int idHabito = cursor.getInt(idIndex);
+                        int rachaHabito = dbHelper.calcularRachaHabito(idHabito);
+                        if (rachaHabito > rachaMaxima) {
+                            rachaMaxima = rachaHabito;
+                        }
+                    }
+                } while (cursor.moveToNext());
+            }
+            cursor.close();
         }
+
+        tvRacha.setText("Racha: " + rachaMaxima + " días");
     }
 
     private void mostrarDialogoReiniciar() {

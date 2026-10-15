@@ -30,9 +30,13 @@
 
         var marcadorObjetivo = null;
 
-        function actualizarUbicacion(lat, lng) {
+        function actualizarUbicacion(lat, lng, esPrimerFoco) {
             var nuevaPos = [lat, lng];
-            map.setView(nuevaPos, 16);
+
+            if (esPrimerFoco) {
+                map.setView(nuevaPos, 16);
+            }
+
             marcadorUsuario.setLatLng(nuevaPos);
         }
 

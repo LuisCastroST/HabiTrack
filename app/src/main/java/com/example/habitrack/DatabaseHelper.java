@@ -6,10 +6,17 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "habitrack.db";
-    private static final int DATABASE_VERSION = 9;
+    private static final int DATABASE_VERSION = 10;
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -30,6 +37,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + HabitContract.HabitEntry.COLUMN_EN_DASHBOARD + " INTEGER DEFAULT 1, "
                 + HabitContract.HabitEntry.COLUMN_LATITUD + " REAL DEFAULT 0.0, "
                 + HabitContract.HabitEntry.COLUMN_LONGITUD + " REAL DEFAULT 0.0, "
+                + "fecha_creacion TEXT, "
                 + "FOREIGN KEY(" + HabitContract.HabitEntry.COLUMN_CATEGORIA_ID + ") REFERENCES "
                 + HabitContract.CategoriaEntry.TABLE_NAME + "(" + HabitContract.CategoriaEntry._ID + ") ON DELETE SET NULL);";
 
@@ -38,6 +46,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + HabitContract.RegistroEntry.COLUMN_HABITO_ID + " INTEGER, "
                 + HabitContract.RegistroEntry.COLUMN_FECHA + " TEXT NOT NULL, "
                 + HabitContract.RegistroEntry.COLUMN_COMPLETADO + " INTEGER DEFAULT 0, "
+                + "distancia REAL DEFAULT 0.0, "
+                + "tiempo_segundos INTEGER DEFAULT 0, "
                 + "FOREIGN KEY(" + HabitContract.RegistroEntry.COLUMN_HABITO_ID + ") REFERENCES "
                 + HabitContract.HabitEntry.TABLE_NAME + "(" + HabitContract.HabitEntry._ID + ") ON DELETE CASCADE);";
 
@@ -97,10 +107,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(HabitContract.HabitEntry.COLUMN_DIAS, dias);
         values.put(HabitContract.HabitEntry.COLUMN_COLOR, color);
         values.put(HabitContract.HabitEntry.COLUMN_EN_DASHBOARD, 1);
+
+        String fechaActual = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+        values.put("fecha_creacion", fechaActual);
+
         return db.insert(HabitContract.HabitEntry.TABLE_NAME, null, values);
     }
-
-
 
     public Cursor obtenerTodosLosHabitos() {
         SQLiteDatabase db = this.getReadableDatabase();
@@ -149,6 +161,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public void guardarEstadoHabitoFecha(int habitoId, String fecha, boolean completado) {
+        guardarEstadoHabitoFechaConDetalle(habitoId, fecha, completado, 0.0f, 0L);
+    }
+
+    public void guardarEstadoHabitoFechaConDetalle(int habitoId, String fecha, boolean completado, float distancia, long tiempoSegundos) {
         SQLiteDatabase db = this.getWritableDatabase();
         db.delete(HabitContract.RegistroEntry.TABLE_NAME,
                 HabitContract.RegistroEntry.COLUMN_HABITO_ID + " = ? AND " + HabitContract.RegistroEntry.COLUMN_FECHA + " = ?",
@@ -158,6 +174,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             values.put(HabitContract.RegistroEntry.COLUMN_HABITO_ID, habitoId);
             values.put(HabitContract.RegistroEntry.COLUMN_FECHA, fecha);
             values.put(HabitContract.RegistroEntry.COLUMN_COMPLETADO, 1);
+            values.put("distancia", distancia);
+            values.put("tiempo_segundos", tiempoSegundos);
             db.insert(HabitContract.RegistroEntry.TABLE_NAME, null, values);
         }
     }
@@ -177,6 +195,84 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return completado;
     }
 
+    public String obtenerNombreHabito(int habitoId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query("habitos", new String[]{"nombre"}, "_id = ?", new String[]{String.valueOf(habitoId)}, null, null, null);
+        String nombre = "Actividad Física";
+        if (cursor != null && cursor.moveToFirst()) {
+            int idx = cursor.getColumnIndex("nombre");
+            if (idx != -1) nombre = cursor.getString(idx);
+            cursor.close();
+        }
+        return nombre;
+    }
+
+    public List<EstadoDiaHabito> obtenerHistorialDinamicoHabito(int habitoId) {
+        List<EstadoDiaHabito> listaDias = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String queryHabito = "SELECT fecha_creacion, dias FROM habitos WHERE _id = ?";
+        Cursor cursorHabito = db.rawQuery(queryHabito, new String[]{String.valueOf(habitoId)});
+
+        String fechaCreacionStr = "2026-01-01";
+        int totalDiasMeta = 7;
+
+        if (cursorHabito != null && cursorHabito.moveToFirst()) {
+            int idxFecha = cursorHabito.getColumnIndex("fecha_creacion");
+            int idxDias = cursorHabito.getColumnIndex("dias");
+            if (idxFecha != -1 && cursorHabito.getString(idxFecha) != null) {
+                fechaCreacionStr = cursorHabito.getString(idxFecha);
+            }
+            if (idxDias != -1) {
+                totalDiasMeta = cursorHabito.getInt(idxDias);
+            }
+            cursorHabito.close();
+        }
+
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+            Calendar calendar = Calendar.getInstance();
+            Date fechaInicio = sdf.parse(fechaCreacionStr);
+            if (fechaInicio != null) {
+                calendar.setTime(fechaInicio);
+
+                for (int i = 0; i < totalDiasMeta; i++) {
+                    String fechaActualStr = sdf.format(calendar.getTime());
+
+                    boolean completado = false;
+                    float distancia = 0;
+                    long tiempoSegundos = 0;
+
+                    String queryRegistro = "SELECT completado, distancia, tiempo_segundos FROM registros WHERE habito_id = ? AND fecha = ?";
+                    Cursor cursorReg = db.rawQuery(queryRegistro, new String[]{String.valueOf(habitoId), fechaActualStr});
+                    if (cursorReg != null && cursorReg.moveToFirst()) {
+                        int idxComp = cursorReg.getColumnIndex("completado");
+                        int idxDist = cursorReg.getColumnIndex("distancia");
+                        int idxTiempo = cursorReg.getColumnIndex("tiempo_segundos");
+
+                        if (idxComp != -1) {
+                            completado = cursorReg.getInt(idxComp) == 1;
+                        }
+                        if (idxDist != -1) {
+                            distancia = cursorReg.getFloat(idxDist);
+                        }
+                        if (idxTiempo != -1) {
+                            tiempoSegundos = cursorReg.getLong(idxTiempo);
+                        }
+                        cursorReg.close();
+                    }
+
+                    listaDias.add(new EstadoDiaHabito(fechaActualStr, completado, distancia, tiempoSegundos));
+                    calendar.add(Calendar.DATE, 1);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return listaDias;
+    }
+
     public Cursor obtenerCategorias() {
         SQLiteDatabase db = this.getReadableDatabase();
         return db.query(HabitContract.CategoriaEntry.TABLE_NAME, null, null, null, null, null, null);
@@ -184,18 +280,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     public Cursor obtenerHabitosCompletadosPorFecha(String fecha) {
         SQLiteDatabase db = this.getReadableDatabase();
-        String query = "SELECT h." + HabitContract.HabitEntry.COLUMN_NOMBRE + ", c." + HabitContract.CategoriaEntry.COLUMN_NOMBRE + " AS categoria_nombre, h." + HabitContract.HabitEntry.COLUMN_COLOR
-                + " FROM " + HabitContract.HabitEntry.TABLE_NAME + " h"
-                + " LEFT JOIN " + HabitContract.CategoriaEntry.TABLE_NAME + " c ON h." + HabitContract.HabitEntry.COLUMN_CATEGORIA_ID + " = c." + HabitContract.CategoriaEntry._ID
-                + " INNER JOIN " + HabitContract.RegistroEntry.TABLE_NAME + " r"
-                + " ON h." + HabitContract.HabitEntry._ID + " = r." + HabitContract.RegistroEntry.COLUMN_HABITO_ID
-                + " WHERE r." + HabitContract.RegistroEntry.COLUMN_FECHA + " = ? AND r." + HabitContract.RegistroEntry.COLUMN_COMPLETADO + " = 1";
+        String query = "SELECT h." + HabitContract.HabitEntry.COLUMN_NOMBRE + ", " +
+                "h." + HabitContract.HabitEntry.COLUMN_CATEGORIA_ID + ", " +
+                "h." + HabitContract.HabitEntry.COLUMN_COLOR + ", " +
+                "r.distancia, r.tiempo_segundos " +
+                "FROM " + HabitContract.HabitEntry.TABLE_NAME + " h " +
+                "INNER JOIN " + HabitContract.RegistroEntry.TABLE_NAME + " r " +
+                "ON h._id = r." + HabitContract.RegistroEntry.COLUMN_HABITO_ID + " " +
+                "WHERE r." + HabitContract.RegistroEntry.COLUMN_FECHA + " = ? " +
+                "AND r." + HabitContract.RegistroEntry.COLUMN_COMPLETADO + " = 1";
         return db.rawQuery(query, new String[]{fecha});
-    }
-
-    public Cursor obtenerTodosLosRegistros() {
-        SQLiteDatabase db = this.getReadableDatabase();
-        return db.query(HabitContract.RegistroEntry.TABLE_NAME, null, null, null, null, null, null);
     }
 
     public void eliminarHabito(int id) {
@@ -226,28 +320,28 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (cursor != null) {
             if (cursor.moveToFirst()) {
                 try {
-                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
-                    java.util.Calendar cal = java.util.Calendar.getInstance();
-
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
                     String fechaStr = cursor.getString(0);
-                    java.util.Date fechaAnterior = sdf.parse(fechaStr);
+                    Date fechaAnterior = sdf.parse(fechaStr);
 
                     racha = 1;
 
                     while (cursor.moveToNext()) {
                         String fechaActualStr = cursor.getString(0);
-                        java.util.Date fechaActual = sdf.parse(fechaActualStr);
+                        Date fechaActual = sdf.parse(fechaActualStr);
 
-                        long diferenciaMillis = fechaAnterior.getTime() - fechaActual.getTime();
-                        long diasDiferencia = diferenciaMillis / (1000 * 60 * 60 * 24);
+                        if (fechaAnterior != null && fechaActual != null) {
+                            long diferenciaMillis = fechaAnterior.getTime() - fechaActual.getTime();
+                            long diasDiferencia = diferenciaMillis / (1000 * 60 * 60 * 24);
 
-                        if (diasDiferencia == 1) {
-                            racha++;
-                            fechaAnterior = fechaActual;
-                        } else if (diasDiferencia == 0) {
-                            continue;
-                        } else {
-                            break;
+                            if (diasDiferencia == 1) {
+                                racha++;
+                                fechaAnterior = fechaActual;
+                            } else if (diasDiferencia == 0) {
+                                continue;
+                            } else {
+                                break;
+                            }
                         }
                     }
                 } catch (Exception e) {
@@ -259,3 +353,4 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.close();
         return racha;
     }
+}

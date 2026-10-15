@@ -145,6 +145,7 @@ public class GestionarHabitos extends AppCompatActivity {
                 LinearLayout.LayoutParams.WRAP_CONTENT
         ));
         fila.setPadding(0, 16, 0, 16);
+        fila.setGravity(android.view.Gravity.CENTER_VERTICAL);
 
         TextView tvColor = new TextView(this);
         tvColor.setText("   ");
@@ -153,30 +154,26 @@ public class GestionarHabitos extends AppCompatActivity {
         } catch (Exception e) {
             tvColor.setBackgroundColor(Color.parseColor("#4CAF50"));
         }
-        LinearLayout.LayoutParams paramsColor = new LinearLayout.LayoutParams(30, LinearLayout.LayoutParams.MATCH_PARENT);
-        paramsColor.setMargins(0, 0, 16, 0);
+        LinearLayout.LayoutParams paramsColor = new LinearLayout.LayoutParams(24, LinearLayout.LayoutParams.MATCH_PARENT);
+        paramsColor.setMargins(0, 0, 12, 0);
         tvColor.setLayoutParams(paramsColor);
 
         TextView tvInfo = new TextView(this);
-        tvInfo.setText(item.nombre + " (" + item.categoria + ")");
-        tvInfo.setTextSize(16);
+        tvInfo.setText(item.nombre);
+        tvInfo.setTextSize(15);
         LinearLayout.LayoutParams paramsText = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
         tvInfo.setLayoutParams(paramsText);
         tvInfo.setGravity(android.view.Gravity.CENTER_VERTICAL);
         tvInfo.setOnClickListener(v -> mostrarTimePicker(item.id, item.nombre));
-
-        Switch switchDashboard = new Switch(this);
-        switchDashboard.setChecked(item.enDashboard);
-        switchDashboard.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            dbHelper.actualizarVisibilidadDashboard(item.id, isChecked);
-        });
 
         fila.addView(tvColor);
         fila.addView(tvInfo);
 
         if (esFisico) {
             Button btnGps = new Button(this);
-            btnGps.setText("📍");
+            btnGps.setText("GPS");
+            btnGps.setTextSize(12);
+            btnGps.setPadding(15, 0, 15, 0);
             btnGps.setOnClickListener(v -> {
                 Intent intent = new Intent(GestionarHabitos.this, PantallaActividadFisica.class);
                 intent.putExtra("HABITO_ID", item.id);
@@ -185,10 +182,28 @@ public class GestionarHabitos extends AppCompatActivity {
             fila.addView(btnGps);
         }
 
+        Button btnCalendario = new Button(this);
+        btnCalendario.setText("Hist.");
+        btnCalendario.setTextSize(12);
+        btnCalendario.setPadding(15, 0, 15, 0);
+        btnCalendario.setOnClickListener(v -> {
+            Intent intent = new Intent(GestionarHabitos.this, CalendarioActivity.class);
+            intent.putExtra("HABITO_ID", item.id);
+            startActivity(intent);
+        });
+        fila.addView(btnCalendario);
+
+        Switch switchDashboard = new Switch(this);
+        switchDashboard.setChecked(item.enDashboard);
+        switchDashboard.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            dbHelper.actualizarVisibilidadDashboard(item.id, isChecked);
+        });
         fila.addView(switchDashboard);
 
         Button btnEliminar = new Button(this);
         btnEliminar.setText("X");
+        btnEliminar.setTextSize(12);
+        btnEliminar.setPadding(15, 0, 15, 0);
         btnEliminar.setOnClickListener(v -> mostrarDialogoConfirmacionEliminar(item.id, item.nombre));
         fila.addView(btnEliminar);
 
@@ -259,13 +274,13 @@ public class GestionarHabitos extends AppCompatActivity {
 
     private void mostrarDialogoConfirmacionEliminar(int habitoId, String nombreHabito) {
         new AlertDialog.Builder(this)
-                .setTitle("Eliminar hábito")
+                .setTitle("Eliminar habito")
                 .setMessage("Estás seguro de que deseas eliminar '" + nombreHabito + "'?")
                 .setPositiveButton("Eliminar", (dialog, which) -> {
                     cancelarAlarmaHabito(habitoId);
                     dbHelper.eliminarHabito(habitoId);
                     cargarListaHabitos();
-                    Toast.makeText(this, "Hábito eliminado", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Habito eliminado", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();
@@ -273,14 +288,14 @@ public class GestionarHabitos extends AppCompatActivity {
 
     private void mostrarDialogoCrearHabito() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Nuevo Hábito");
+        builder.setTitle("Nuevo Habito");
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(50, 20, 50, 20);
 
         final EditText edtNombre = new EditText(this);
-        edtNombre.setHint("Nombre del nuevo hábito");
+        edtNombre.setHint("Nombre del nuevo habito");
         layout.addView(edtNombre);
 
         final Spinner spinnerCategoria = new Spinner(this);
@@ -312,7 +327,7 @@ public class GestionarHabitos extends AppCompatActivity {
         layout.addView(spinnerColor);
 
         final EditText edtDias = new EditText(this);
-        edtDias.setHint("Días meta para completar el hábito");
+        edtDias.setHint("Días meta para completar el habito");
         edtDias.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         layout.addView(edtDias);
 
@@ -332,14 +347,20 @@ public class GestionarHabitos extends AppCompatActivity {
             }
 
             int dias = Integer.parseInt(diasStr);
+
+            if (dias <= 0 || dias > 365) {
+                Toast.makeText(this, "Los días meta deben estar entre 1 y 365, womp womp", Toast.LENGTH_LONG).show();
+                return;
+            }
+
             long id = dbHelper.insertarHabito(nombre, categoriaId, dias, colorHex);
 
             if (id != -1) {
-                Toast.makeText(this, "Hábito guardado", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Habito guardado", Toast.LENGTH_SHORT).show();
                 cargarListaHabitos();
                 preguntarActivarNotificacion((int) id, nombre);
             } else {
-                Toast.makeText(this, "Error al guardar el hábito", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Error al guardar el habito", Toast.LENGTH_SHORT).show();
             }
         });
 

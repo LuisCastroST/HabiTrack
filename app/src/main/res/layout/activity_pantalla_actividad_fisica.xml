@@ -3,39 +3,49 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:background="#121212">
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Actividad Física al Aire Libre"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:paddingBottom="12dp"/>
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="8dp">
 
-    <Spinner
-        android:id="@+id/spinnerModalidad"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="10dp"
-        android:layout_marginBottom="12dp"/>
+        <Button
+            android:id="@+id/btnVolverAtras"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="← Volver"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tvTituloActividadFisica"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Cargando..."
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:gravity="center" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/tvCoordenadas"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Ubicación GPS: Buscando señal..."
-        android:textSize="14sp"
-        android:paddingBottom="8dp"/>
+        android:textColor="#B0BEC5"
+        android:paddingBottom="8dp" />
 
     <WebView
         android:id="@+id/webViewMapa"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"/>
+        android:layout_marginBottom="12dp" />
 
     <Button
         android:id="@+id/btnFinalizarTrote"
@@ -43,6 +53,6 @@
         android:layout_height="wrap_content"
         android:text="Finalizar y Registrar Hábito"
         android:backgroundTint="#4CAF50"
-        android:textColor="#FFFFFF"/>
+        android:textColor="#FFFFFF" />
 
 </LinearLayout>

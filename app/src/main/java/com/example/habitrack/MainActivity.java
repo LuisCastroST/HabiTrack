@@ -84,10 +84,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (btnVerCalendario != null) {
-            btnVerCalendario.setOnClickListener(v -> {
-                Intent intent = new Intent(MainActivity.this, CalendarioActivity.class);
-                startActivity(intent);
-            });
+            btnVerCalendario.setOnClickListener(v -> mostrarDialogoSeleccionarHabitoParaCalendario());
         }
 
         if (btnReiniciar != null) {
@@ -115,6 +112,44 @@ public class MainActivity extends AppCompatActivity {
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
+    }
+
+    private void mostrarDialogoSeleccionarHabitoParaCalendario() {
+        Cursor cursor = dbHelper.obtenerTodosLosHabitos();
+        if (cursor == null || !cursor.moveToFirst()) {
+            Toast.makeText(this, "No hay hábitos registrados para mostrar", Toast.LENGTH_SHORT).show();
+            if (cursor != null) {
+                cursor.close();
+            }
+            return;
+        }
+
+        java.util.List<String> nombres = new java.util.ArrayList<>();
+        java.util.List<Integer> ids = new java.util.ArrayList<>();
+
+        int idIdx = cursor.getColumnIndex(HabitContract.HabitEntry._ID);
+        int nombreIdx = cursor.getColumnIndex(HabitContract.HabitEntry.COLUMN_NOMBRE);
+
+        do {
+            if (idIdx != -1 && nombreIdx != -1) {
+                ids.add(cursor.getInt(idIdx));
+                nombres.add(cursor.getString(nombreIdx));
+            }
+        } while (cursor.moveToNext());
+        cursor.close();
+
+        String[] arrayNombres = nombres.toArray(new String[0]);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Seleccionar hábito")
+                .setItems(arrayNombres, (dialog, which) -> {
+                    int habitoIdSeleccionado = ids.get(which);
+                    Intent intent = new Intent(MainActivity.this, CalendarioActivity.class);
+                    intent.putExtra("HABITO_ID", habitoIdSeleccionado);
+                    startActivity(intent);
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 
     @Override

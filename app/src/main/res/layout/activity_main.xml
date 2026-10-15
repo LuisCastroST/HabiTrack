@@ -79,10 +79,10 @@
 
         <Button
             android:id="@+id/btnReiniciar"
-            style="?android:attr/borderlessButtonStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Reiniciar Progreso" />
+            android:text="Reiniciar Progreso"
+            android:textColor="#FF5252" />
 
         <Button
             android:id="@+id/btnCerrarSesion"

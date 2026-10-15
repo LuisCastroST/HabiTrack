@@ -1,8 +1,13 @@
 package com.example.habitrack;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -17,7 +22,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -33,17 +37,27 @@ public class PantallaActividadFisica extends AppCompatActivity {
     private int habitoId;
     private TextView tvCoordenadas;
     private WebView webViewMapa;
-    private Spinner spinnerModalidad;
-    private Location ubicacionAnterior = null;
     private float distanciaTotalMetros = 0;
-    private long tiempoInicioMs = 0;
     private boolean enEjecucion = false;
 
+    private boolean esPrimerFoco = true;
     private double latObjetivo = 0, lngObjetivo = 0;
     private boolean modoObjetivoFijado = false;
     private final float RADIO_LLEGADA_METROS = 15.0f;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1002;
     private boolean mapaListo = false;
+
+    private BroadcastReceiver ubicacionReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            double lat = intent.getDoubleExtra("lat", 0);
+            double lng = intent.getDoubleExtra("lng", 0);
+            float distancia = intent.getFloatExtra("distancia", 0);
+            distanciaTotalMetros = distancia;
+
+            actualizarInterfazUbicacion(lat, lng);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,13 +66,34 @@ public class PantallaActividadFisica extends AppCompatActivity {
 
         dbHelper = new DatabaseHelper(this);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-
         habitoId = getIntent().getIntExtra("HABITO_ID", -1);
+        String nombreHabito = dbHelper.obtenerNombreHabito(habitoId);
+
+        Button btnVolver = findViewById(R.id.btnVolverAtras);
+        if (btnVolver != null) {
+            btnVolver.setOnClickListener(v -> {
+                Intent intent = new Intent(PantallaActividadFisica.this, GestionarHabitos.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(intent);
+                finish();
+           });
+        }
+
+        TextView tvTitulo = findViewById(R.id.tvTituloActividadFisica);
+        if (tvTitulo != null) {
+            tvTitulo.setText(nombreHabito);
+        }
 
         tvCoordenadas = findViewById(R.id.tvCoordenadas);
-        spinnerModalidad = findViewById(R.id.spinnerModalidad);
         Button btnFinalizar = findViewById(R.id.btnFinalizarTrote);
         webViewMapa = findViewById(R.id.webViewMapa);
+
+        Intent serviceIntent = new Intent(this, ServicioSeguimiento.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
 
         if (webViewMapa != null) {
             WebSettings webSettings = webViewMapa.getSettings();
@@ -75,7 +110,7 @@ public class PantallaActividadFisica extends AppCompatActivity {
                 public void onPageFinished(WebView view, String url) {
                     super.onPageFinished(view, url);
                     mapaListo = true;
-                    iniciarModoNeutral();
+                    enEjecucion = true;
                     verificarPermisosYObtenerUbicacion();
                 }
             });
@@ -83,25 +118,26 @@ public class PantallaActividadFisica extends AppCompatActivity {
             webViewMapa.loadUrl("file:///android_asset/mapa.html");
         }
 
-        if (spinnerModalidad != null) {
-            String[] modalidades = {"Trotar", "Caminar"};
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, modalidades);
-            spinnerModalidad.setAdapter(adapter);
-        }
-
         if (btnFinalizar != null) {
-            btnFinalizar.setOnClickListener(v -> {
-                finalizarModoNeutral();
-            });
+            btnFinalizar.setOnClickListener(v -> finalizarEntrenamiento());
         }
     }
 
-    private void iniciarModoNeutral() {
-        distanciaTotalMetros = 0;
-        ubicacionAnterior = null;
-        tiempoInicioMs = System.currentTimeMillis();
-        enEjecucion = true;
-        Toast.makeText(this, "Seguimiento libre iniciado", Toast.LENGTH_SHORT).show();
+    @Override
+    protected void onResume() {
+        super.onResume();
+        IntentFilter filter = new IntentFilter("ACTUALIZAR_UBICACION_GPS");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(ubicacionReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(ubicacionReceiver, filter);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(ubicacionReceiver);
     }
 
     public class WebAppInterface {
@@ -111,36 +147,42 @@ public class PantallaActividadFisica extends AppCompatActivity {
                 latObjetivo = lat;
                 lngObjetivo = lng;
                 modoObjetivoFijado = true;
-                Toast.makeText(PantallaActividadFisica.this,
-                        "Objetivo fijado.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(PantallaActividadFisica.this, "Objetivo fijado", Toast.LENGTH_SHORT).show();
             });
         }
     }
 
-    private void finalizarModoNeutral() {
-        enEjecucion = false;
-        long tiempoTotalSegundos = (System.currentTimeMillis() - tiempoInicioMs) / 1000;
-        long minutos = tiempoTotalSegundos / 60;
-        long segundos = tiempoTotalSegundos % 60;
+    private void actualizarInterfazUbicacion(double lat, double lng) {
+        if (!enEjecucion) return;
 
-        String modalidadSeleccionada = (spinnerModalidad != null && spinnerModalidad.getSelectedItem() != null)
-                ? spinnerModalidad.getSelectedItem().toString()
-                : "Trotar";
+        if (tvCoordenadas != null) {
+            if (modoObjetivoFijado) {
+                Location destino = new Location("destino");
+                destino.setLatitude(latObjetivo);
+                destino.setLongitude(lngObjetivo);
 
-        String resumen = String.format(Locale.getDefault(),
-                "Actividad: %s\nDistancia: %.1f metros\nTiempo: %d min %d seg",
-                modalidadSeleccionada, distanciaTotalMetros, minutos, segundos);
+                Location actual = new Location("actual");
+                actual.setLatitude(lat);
+                actual.setLongitude(lng);
 
-        if (habitoId != -1) {
-            String fechaHoy = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
-            dbHelper.guardarEstadoHabitoFecha(habitoId, fechaHoy, true);
+                float distanciaAlObjetivo = actual.distanceTo(destino);
+                tvCoordenadas.setText(String.format(Locale.getDefault(), "Meta a: %.1f m | Recorrido: %.1f m", distanciaAlObjetivo, distanciaTotalMetros));
+
+                if (distanciaAlObjetivo <= RADIO_LLEGADA_METROS) {
+                    modoObjetivoFijado = false;
+                    long tiempoTotalSegundos = (System.currentTimeMillis() - ServicioSeguimiento.tiempoInicioMs) / 1000;
+                    mostrarDialogoVictoria(distanciaTotalMetros, tiempoTotalSegundos);
+                }
+            } else {
+                tvCoordenadas.setText(String.format(Locale.getDefault(), "Distancia libre: %.1f m", distanciaTotalMetros));
+            }
         }
 
-        new AlertDialog.Builder(this)
-                .setTitle("Resumen de Actividad")
-                .setMessage(resumen)
-                .setPositiveButton("Aceptar", (dialog, which) -> finish())
-                .show();
+        if (mapaListo && webViewMapa != null) {
+            webViewMapa.evaluateJavascript("javascript:actualizarUbicacion(" + lat + ", " + lng + ", " + esPrimerFoco + ");", null);
+
+            esPrimerFoco = false;
+        }
     }
 
     private void mostrarDialogoVictoria(float distancia, long tiempoSegundos) {
@@ -148,59 +190,53 @@ public class PantallaActividadFisica extends AppCompatActivity {
         long segundos = tiempoSegundos % 60;
 
         String mensaje = String.format(Locale.getDefault(),
-                "Has llegado a tu meta \n\nDistancia total: %.1f metros\nTiempo empleado: %d min %d seg",
+                "Has llegado a tu meta\n\nDistancia total: %.1f metros\nTiempo empleado: %d min %d seg",
                 distancia, minutos, segundos);
 
         if (habitoId != -1) {
             String fechaHoyStr = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
-            dbHelper.guardarEstadoHabitoFecha(habitoId, fechaHoyStr, true);
+            dbHelper.guardarEstadoHabitoFechaConDetalle(habitoId, fechaHoyStr, true, distancia, tiempoSegundos);
         }
 
         new AlertDialog.Builder(this)
                 .setTitle("Objetivo Alcanzado")
                 .setMessage(mensaje)
-                .setPositiveButton("Finalizar", (dialog, which) -> finish())
+                .setPositiveButton("Finalizar", (dialog, which) -> {
+                    stopService(new Intent(this, ServicioSeguimiento.class));
+                    finish();
+                })
                 .setCancelable(false)
                 .show();
     }
 
-    private void procesarUbicacionConFiltro(Location location) {
-        if (!enEjecucion) return;
+    private void finalizarEntrenamiento() {
+        stopService(new Intent(this, ServicioSeguimiento.class));
 
-        if (location.hasAccuracy() && location.getAccuracy() <= 30.0f) {
-            if (ubicacionAnterior != null) {
-                float distanciaTramo = ubicacionAnterior.distanceTo(location);
-                if (distanciaTramo < 100.0f && distanciaTramo > 0.5f) {
-                    distanciaTotalMetros += distanciaTramo;
-                }
-            }
-            ubicacionAnterior = location;
+        long tiempoTotalSegundos = (System.currentTimeMillis() - ServicioSeguimiento.tiempoInicioMs) / 1000;
+        long minutos = tiempoTotalSegundos / 60;
+        long segundos = tiempoTotalSegundos % 60;
+        float distanciaFinal = distanciaTotalMetros;
 
-            if (tvCoordenadas != null) {
-                if (modoObjetivoFijado) {
-                    Location destino = new Location("destino");
-                    destino.setLatitude(latObjetivo);
-                    destino.setLongitude(lngObjetivo);
-                    float distanciaAlObjetivo = location.distanceTo(destino);
-                    tvCoordenadas.setText(String.format(Locale.getDefault(), "Meta a: %.1f m | Recorrido: %.1f m", distanciaAlObjetivo, distanciaTotalMetros));
+        String nombreHabito = dbHelper.obtenerNombreHabito(habitoId);
 
-                    if (distanciaAlObjetivo <= RADIO_LLEGADA_METROS) {
-                        modoObjetivoFijado = false;
-                        long tiempoTotalSegundos = (System.currentTimeMillis() - tiempoInicioMs) / 1000;
-                        mostrarDialogoVictoria(distanciaTotalMetros, tiempoTotalSegundos);
-                    }
-                } else {
-                    tvCoordenadas.setText(String.format(Locale.getDefault(), "Distancia libre: %.1f m", distanciaTotalMetros));
-                }
-            }
+        String resumen = String.format(Locale.getDefault(),
+                "Resumen de sesion:\n\n" +
+                        "Actividad: %s\n" +
+                        "Distancia total: %.1f metros\n" +
+                        "Tiempo empleado: %d minutos y %d segundos",
+                nombreHabito, distanciaFinal, minutos, segundos);
 
-            if (mapaListo && webViewMapa != null) {
-                webViewMapa.evaluateJavascript("javascript:actualizarUbicacion(" + location.getLatitude() + ", " + location.getLongitude() + ");", null);
-            }
-
-        } else {
-            Toast.makeText(this, "Buscando mejor señal GPS...", Toast.LENGTH_SHORT).show();
+        if (habitoId != -1) {
+            String fechaHoy = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+            dbHelper.guardarEstadoHabitoFechaConDetalle(habitoId, fechaHoy, true, distanciaFinal, tiempoTotalSegundos);
         }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Registro de Actividad")
+                .setMessage(resumen)
+                .setCancelable(false)
+                .setPositiveButton("Aceptar", (dialog, which) -> finish())
+                .show();
     }
 
     private void verificarPermisosYObtenerUbicacion() {
@@ -211,14 +247,8 @@ public class PantallaActividadFisica extends AppCompatActivity {
         }
 
         fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
-            if (location != null) {
-                procesarUbicacionConFiltro(location);
-
-                if (habitoId != -1) {
-                    dbHelper.actualizarUbicacionHabito(habitoId, location.getLatitude(), location.getLongitude());
-                }
-            } else {
-                Toast.makeText(this, "Buscando señal GPS...", Toast.LENGTH_SHORT).show();
+            if (location != null && habitoId != -1) {
+                dbHelper.actualizarUbicacionHabito(habitoId, location.getLatitude(), location.getLongitude());
             }
         });
     }
@@ -230,8 +260,13 @@ public class PantallaActividadFisica extends AppCompatActivity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 verificarPermisosYObtenerUbicacion();
             } else {
-                Toast.makeText(this, "Permiso de ubicación denegado, por favor asegurate que la app tenga permisos especiales...", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Permiso de ubicacion denegado", Toast.LENGTH_LONG).show();
             }
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        moveTaskToBack(true);
     }
 }

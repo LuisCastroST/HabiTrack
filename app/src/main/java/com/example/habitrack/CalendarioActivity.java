@@ -7,12 +7,25 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
+/**
+ * Actividad encargada de visualizar el calendario e historial dinamico de cumplimiento
+ * Para un habito en especifico de la app.
+ * Renderiza los dias transcurridos y su estado mediante un @link RecyclerView.
+ */
+
 public class CalendarioActivity extends AppCompatActivity {
 
     private RecyclerView recyclerViewHistorial;
     private TextView tvTituloHabito;
     private DatabaseHelper dbHelper;
     private int habitoId;
+
+    /**
+     * Inicializa los componentes de la interfaz, recupera el identificador del habito enviado
+     * por el intent y desencadena la carga del historial dinamico.
+     *
+     * @param savedInstanceState Estado previo guardado de la actividad.
+     */
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,6 +45,11 @@ public class CalendarioActivity extends AppCompatActivity {
         cargarHistorialHabito();
     }
 
+    /**
+     * Consulta el historial dinamico del habito actual a traves del DatabaseHelper
+     * y configura el adaptador visual del recyclerView para mostrar el desglose de dias.
+     */
+
     private void cargarHistorialHabito() {
         if (habitoId != -1) {
             List<EstadoDiaHabito> historial = dbHelper.obtenerHistorialDinamicoHabito(habitoId);
@@ -41,6 +59,11 @@ public class CalendarioActivity extends AppCompatActivity {
             }
         }
     }
+
+    /**
+     * Cierra de forma segura la instancia abierta del DatabaseHelper.
+     * Al destruir la actividad se ayuda a prevenir fugas de memoria.
+     */
 
     @Override
     protected void onDestroy() {

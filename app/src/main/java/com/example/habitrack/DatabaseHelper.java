@@ -13,14 +13,31 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Este databasehelper es el administrador principal de la base de datos en SQ lite local para la
+ * aplicacion. Ayuda con el gestionamiento del diclo de vida de la bd, crea tablas relacionals,
+ * ayuda con consultas CRUD y es el encargado de prosesar historiales y rachas de habitos.
+ */
+
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "habitrack.db";
     private static final int DATABASE_VERSION = 10;
 
+    /**
+     * Constructor del helper de la base de datos.
+     *
+     * @param context, El contexto de la aplicación desde donde se invoca.
+     */
+
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
+
+    /**
+     * Ejecuta la creacion inciald de las tablas en la base de datos e inserta todos los registros por defecto.
+     * @param db Es la Instancia de la base de datos SQLlite en modo escritura.
+     */
 
     @Override
     public void onCreate(SQLiteDatabase db) {
@@ -86,9 +103,26 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
+    /**
+     * Inserta un habito basico con valores predeterminados.
+     *
+     * @param nombre Nombre descriptivo del habito.
+     * @return long ID de la fila insertada o -1 en caso de error.
+     */
+
+
     public long agregarHabito(String nombre) {
         return insertarHabito(nombre, 5, 30, "#4CAF50");
     }
+
+    /**
+     * Inserta un nuevo recordatorio asociado a un habito en especifico.
+     *
+     * @param habitoId ID del hábito al que le pertenece la alarma.
+     * @param hora     Hora programada.
+     * @param minuto   Minuto programado de la alarma.
+     * @return long ID del recordatorio creado o -1 si falla.
+     */
 
     public long insertarRecordatorio(int habitoId, int hora, int minuto) {
         SQLiteDatabase db = this.getWritableDatabase();
@@ -98,6 +132,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(HabitContract.RecordatorioEntry.COLUMN_MINUTO, minuto);
         return db.insert(HabitContract.RecordatorioEntry.TABLE_NAME, null, values);
     }
+
+    /**
+     * Inserta un nuevo habito compleco con categoria, duracion y color personalizado.
+     *
+     * @param nombre      Nombre o titulo del habito.
+     * @param categoriaId ID de la categoria asociada.
+     * @param dias        Cantidad total de dias de la meta.
+     * @param color       Codigo hexadecimal del color en la interfaz.
+     * @return long ID del nuevo registro creado o -1 si ocurre un error.
+     * @throws SQLException Si ocurre un fallo en la ejecución de la sentencia SQL de insercion.
+     */
 
     public long insertarHabito(String nombre, int categoriaId, int dias, String color) {
         SQLiteDatabase db = this.getWritableDatabase();
@@ -114,6 +159,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return db.insert(HabitContract.HabitEntry.TABLE_NAME, null, values);
     }
 
+    /**
+     * Obtiene un cursor con todos los habitos registrados y sus respectivas categorias mediante un join.
+     *
+     * @return Cursor con los resultados de la consulta de habitos.
+     */
+
     public Cursor obtenerTodosLosHabitos() {
         SQLiteDatabase db = this.getReadableDatabase();
         String query = "SELECT h.*, c." + HabitContract.CategoriaEntry.COLUMN_NOMBRE + " AS categoria_nombre"
@@ -123,12 +174,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return db.rawQuery(query, null);
     }
 
+    /**
+     * Consulta los recordatorios asociados a un habite en particular.
+     *
+     * @param habitoId ID del habito a consultar.
+     * @return Cursor con los recordatorios encontrados.
+     */
+
     public Cursor obtenerRecordatoriosPorHabito(int habitoId) {
         SQLiteDatabase db = this.getReadableDatabase();
         return db.query(HabitContract.RecordatorioEntry.TABLE_NAME, null,
                 HabitContract.RecordatorioEntry.COLUMN_HABITO_ID + " = ?",
                 new String[]{String.valueOf(habitoId)}, null, null, null);
     }
+
+    /**
+     * Obtiene los habitos marcados para ser mostrados en el panel principal.
+     *
+     * @return Cursor con los habitos del dashboard.
+     */
 
     public Cursor obtenerHabitosDashboard() {
         SQLiteDatabase db = this.getReadableDatabase();
@@ -137,12 +201,28 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return db.query(HabitContract.HabitEntry.TABLE_NAME, null, selection, selectionArgs, null, null, null);
     }
 
+    /**
+     * Actualiza la visibilidad de un habito en el panel principal.
+     *
+     * @param id          ID del habito.
+     * @param enDashboard Estado booleano de visibilidad.
+     */
+
     public void actualizarVisibilidadDashboard(int id, boolean enDashboard) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(HabitContract.HabitEntry.COLUMN_EN_DASHBOARD, enDashboard ? 1 : 0);
         db.update(HabitContract.HabitEntry.TABLE_NAME, values, HabitContract.HabitEntry._ID + " = ?", new String[]{String.valueOf(id)});
     }
+
+    /**
+     * Actualiza las coordenadas geograficas del apartado de habitos fisicos.
+     *
+     * @param idHabito ID del habito fisico.
+     * @param latitud  Latitud GPS obtenida.
+     * @param longitud Longitud GPS obtenida.
+     * @return boolean True si se actualizo al menos una fila, false en el caso contrario.
+     */
 
     public boolean actualizarUbicacionHabito(int idHabito, double latitud, double longitud) {
         SQLiteDatabase db = this.getWritableDatabase();
@@ -160,9 +240,27 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return filasAfectadas > 0;
     }
 
+    /**
+     * Guarda el estado de cumplimiento de un habito en una fecha especificada.
+     *
+     28      * @param habitoId   ID del habito.
+     * @param fecha      Fecha en formato yyyy-MM-dd.
+     * @param completado Estado de cumplimiento.
+     */
+
     public void guardarEstadoHabitoFecha(int habitoId, String fecha, boolean completado) {
         guardarEstadoHabitoFechaConDetalle(habitoId, fecha, completado, 0.0f, 0L);
     }
+
+    /**
+     * Guarda el estado detallado de un habito en una fecha, incluyendo distancia y tiempo en caso de una actividad fisica.
+     *
+     * @param habitoId       ID del habito.
+     * @param fecha          Fecha en formato yyyy-MM-dd.
+     * @param completado     Estado de cumplimiento.
+     * @param distancia      Distancia recorrida en metros.
+     * @param tiempoSegundos Duracion total de la actividad en segundos.
+     */
 
     public void guardarEstadoHabitoFechaConDetalle(int habitoId, String fecha, boolean completado, float distancia, long tiempoSegundos) {
         SQLiteDatabase db = this.getWritableDatabase();
@@ -180,6 +278,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    /**
+     * Verifica si un habito se euncuentra completado en la fecha dada.
+     *
+     * @param habitoId ID del habito.
+     * @param fecha    Fecha a consultar.
+     * @return boolean True si esta completado, false en el caso contrario.
+     */
+
     public boolean estaCompletadoEnFecha(int habitoId, String fecha) {
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.query(HabitContract.RegistroEntry.TABLE_NAME,
@@ -195,6 +301,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return completado;
     }
 
+    /**
+     * Obtiene el nombre de un habito a partir de su ID.
+     *
+     * @param habitoId ID del habito.
+     * @return String con el nombre del habito o valor por defecto.
+     */
+
     public String obtenerNombreHabito(int habitoId) {
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.query("habitos", new String[]{"nombre"}, "_id = ?", new String[]{String.valueOf(habitoId)}, null, null, null);
@@ -206,6 +319,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         return nombre;
     }
+
+    /**
+     * Genera la lista historica dinamica de cumplimientos para un habito, considerando su fecha de creacion y meta de dias.
+     *
+     * @param habitoId ID del habito.
+     * @return Lista de objetos {@link EstadoDiaHabito} con el desglose diario.
+     */
 
     public List<EstadoDiaHabito> obtenerHistorialDinamicoHabito(int habitoId) {
         List<EstadoDiaHabito> listaDias = new ArrayList<>();
@@ -273,10 +393,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return listaDias;
     }
 
+    /**
+     * Obtiene todas las categorias registradas en el base de datos.
+     *
+     * @return Cursor con las categorias.
+     */
     public Cursor obtenerCategorias() {
         SQLiteDatabase db = this.getReadableDatabase();
         return db.query(HabitContract.CategoriaEntry.TABLE_NAME, null, null, null, null, null, null);
     }
+
+    /**
+     * Obtiene los habitos que se han completado en una fecha especifica junto con sus detalles fisicos.
+     *
+     * @param fecha Fecha a consultar en formato yyyy-MM-dd.
+     * @return Cursor con los habitos completados.
+     */
 
     public Cursor obtenerHabitosCompletadosPorFecha(String fecha) {
         SQLiteDatabase db = this.getReadableDatabase();
@@ -292,11 +424,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return db.rawQuery(query, new String[]{fecha});
     }
 
+    /**
+     * Elimina un habito seleccinado con todos sus registros historicos asociados de forma en cascada.
+     *
+     * @param id ID del habito a eliminar.
+     */
+
     public void eliminarHabito(int id) {
         SQLiteDatabase db = this.getWritableDatabase();
         db.delete(HabitContract.HabitEntry.TABLE_NAME, HabitContract.HabitEntry._ID + " = ?", new String[]{String.valueOf(id)});
         db.delete(HabitContract.RegistroEntry.TABLE_NAME, HabitContract.RegistroEntry.COLUMN_HABITO_ID + " = ?", new String[]{String.valueOf(id)});
     }
+
+    /**
+     * Limpia y reinicia todos los datos de registros y habitos de la aplicacion.
+     */
 
     public void reiniciarTodo() {
         SQLiteDatabase db = this.getWritableDatabase();
@@ -304,6 +446,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.delete(HabitContract.HabitEntry.TABLE_NAME, null, null);
         db.close();
     }
+
+    /**
+     * Calcula la racha consecutiva actual del cumplimiento para un habito.
+     *
+     * @param habitoId ID del habito.
+     * @return int Numero de dias consecutivos cumplidos.
+     */
 
     public int calcularRachaHabito(int habitoId) {
         SQLiteDatabase db = this.getReadableDatabase();

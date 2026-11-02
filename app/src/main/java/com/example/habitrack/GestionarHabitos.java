@@ -30,6 +30,15 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+/**
+ * Actividad principal para la gestion de habitos.
+ * Permite listar habitos existentes divididos entre habitos normales y actividades fisicas,
+ * ademas permite la creacion de nuevos habitos mediante dialogos interactivos donde el usuario
+ * puede configurar recordatorios, seleccionar colores para cada habito, ambitos y la meta en dias.
+ * Puede directamente elegir si desea mostrar un habito en la pantalla principal ademas de poder
+ * eliminar registros.
+ */
+
 public class GestionarHabitos extends AppCompatActivity {
 
     private DatabaseHelper dbHelper;
@@ -38,6 +47,10 @@ public class GestionarHabitos extends AppCompatActivity {
     private FusedLocationProviderClient fusedLocationClient;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
     private int habitoIdSeleccionadoParaGps = -1;
+
+    /**
+     * Estructura de datos interna para representar un habito en la interfaz.
+     */
 
     private static class HabitoItem {
         int id;
@@ -54,6 +67,12 @@ public class GestionarHabitos extends AppCompatActivity {
             this.enDashboard = enDashboard;
         }
     }
+
+    /**
+     * Inicializa los componentes de la interfaz de usuario y carga la lista dinamica de habitos
+     * almacenados en la base de datos local.
+     * @param savedInstanceState Estado previo guardado de la actividad, si existe.
+     */
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,6 +91,11 @@ public class GestionarHabitos extends AppCompatActivity {
 
         cargarListaHabitos();
     }
+
+    /**
+     * Consulta todos los habitos desde el DatabaseHelper, los clasifica entre habitos fisicos
+     * y normales, y los dibuja dinamicamente en el contenedor visual.
+     */
 
     private void cargarListaHabitos() {
         if (layoutListaHabitos == null) return;
@@ -136,6 +160,16 @@ public class GestionarHabitos extends AppCompatActivity {
             }
         }
     }
+
+    /**
+     * Crea dinamicamente la fila grafica que le corresponde al habito, incluyendo botones de gps,
+     * historial, switches de dashboard y boton de eliminacion.
+     *
+     *
+     * @param item Objeto con los datos del habito a renderizas.
+     * @param esFisico Booleano que indica si el habito pertenece a una actividad fisica o no.
+     * @return LinearLayout con la estructura visual de la fila completa.
+     */
 
     private LinearLayout crearFilaHabito(HabitoItem item, boolean esFisico) {
         LinearLayout fila = new LinearLayout(this);
@@ -210,6 +244,16 @@ public class GestionarHabitos extends AppCompatActivity {
         return fila;
     }
 
+    /**
+     * Configura o actualiza una alarma que se repite diariamente mediante el sistema
+     * de AlarmManager para notificar al usuario sobre un habito en especifico.
+     *
+     * @param habitoId     ID unico del habito asociado a la notificacion.
+     * @param nombreHabito Nombre del habito que aparecera en el aviso.
+     * @param nuevaHora    Hora programada en formato de 24H.
+     * @param nuevoMinuto  Minuto programado para la alarma.
+     */
+
     public void actualizarNotificacionHabito(int habitoId, String nombreHabito, int nuevaHora, int nuevoMinuto) {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
 
@@ -255,6 +299,12 @@ public class GestionarHabitos extends AppCompatActivity {
         }
     }
 
+    /**
+     * Cancela y elimina la alarma programada asociada a un habito.
+     *
+     * @param habitoId ID unico del habito cuya alarma sera cancelada.
+     */
+
     private void cancelarAlarmaHabito(int habitoId) {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, NotificationReceiver.class);
@@ -272,6 +322,13 @@ public class GestionarHabitos extends AppCompatActivity {
         }
     }
 
+    /**
+     * Muestra un dialogo de confirmacion antes de permanentemente eliminar un habito del sistema.
+     *
+     * @param habitoId     ID del habito a eliminar.
+     * @param nombreHabito Nombre descriptivo del habito para ser mostrado en la alerta.
+     */
+
     private void mostrarDialogoConfirmacionEliminar(int habitoId, String nombreHabito) {
         new AlertDialog.Builder(this)
                 .setTitle("Eliminar habito")
@@ -285,6 +342,11 @@ public class GestionarHabitos extends AppCompatActivity {
                 .setNegativeButton("Cancelar", null)
                 .show();
     }
+
+    /**
+     * Despliega un formulario interactivo en una ventana de dialogo flotante para la creacion
+     * de un nuevo habito capturando el nombre, categoria, color y dias que durara el habito.
+     */
 
     private void mostrarDialogoCrearHabito() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -368,6 +430,14 @@ public class GestionarHabitos extends AppCompatActivity {
         builder.show();
     }
 
+    /**
+     * Le pregunta al usuario si desea configurar un recordatorio en el horario especifico
+     * tras crear un habito.
+     *
+     * @param habitoId     ID unico del habito recien creado.
+     * @param nombreHabito Nombre del habito.
+     */
+
     private void preguntarActivarNotificacion(int habitoId, String nombreHabito) {
         new AlertDialog.Builder(this)
                 .setTitle("Recordatorio")
@@ -379,6 +449,13 @@ public class GestionarHabitos extends AppCompatActivity {
                 .setCancelable(false)
                 .show();
     }
+
+    /**
+     * Despliega un selector de hora para programar la alarma de notificacion del habito.
+     *
+     * @param habitoId     ID unico del habito.
+     * @param nombreHabito Nombre del habito.
+     */
 
     private void mostrarTimePicker(int habitoId, String nombreHabito) {
         Calendar c = Calendar.getInstance();
@@ -392,6 +469,11 @@ public class GestionarHabitos extends AppCompatActivity {
 
         timePicker.show();
     }
+
+    /**
+     * Cierra la conexion abierta con el DatabaseHelper al destruir la actividad para prevenir
+     * fugas de recursos.
+     */
 
     @Override
     protected void onDestroy() {

@@ -30,6 +30,12 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+/**
+ * Actividad encargada del seguimiento de actividades fisicas y geolocalizacion.
+ * Gestiona un servicio en priper plano para el rastreo GPS, interactua con un mapa renderizado
+ * en un @link WebView mediante JavaScript Bridge y calcula la distancia hacia objetivos o metas libres.
+ */
+
 public class PantallaActividadFisica extends AppCompatActivity {
 
     private FusedLocationProviderClient fusedLocationClient;
@@ -47,6 +53,11 @@ public class PantallaActividadFisica extends AppCompatActivity {
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1002;
     private boolean mapaListo = false;
 
+    /**
+     * Receptor de transmisiones para actualizar coordenadas y la distancia recorrida en tiempo
+     * real enviadas por el servicio de ubicacion.
+     */
+
     private BroadcastReceiver ubicacionReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -58,6 +69,13 @@ public class PantallaActividadFisica extends AppCompatActivity {
             actualizarInterfazUbicacion(lat, lng);
         }
     };
+
+    /**
+     * Inicia los componentes de la interjaz de actividad fisica, configura el @link WebView
+     * con soporte de JavaScript e inicia el servicio de rastreo GPS en segundo plano.
+     *
+     * @param savedInstanceState Estado previo guardado de la actividad, si existe.
+     */
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,6 +141,10 @@ public class PantallaActividadFisica extends AppCompatActivity {
         }
     }
 
+    /**
+     * Registra el receptor dinamico de actualizaciones GPS al reanudarse la actividad.
+     */
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -134,13 +156,29 @@ public class PantallaActividadFisica extends AppCompatActivity {
         }
     }
 
+    /**
+     * Anula el registro del receptor GPS al pausarse la actividad.
+     */
+
     @Override
     protected void onPause() {
         super.onPause();
         unregisterReceiver(ubicacionReceiver);
     }
 
+    /**
+     * Interfaz de comunicacion bidireccional mediante puente JavaScript (JavascriptInterface)
+     * para interactuar con los eventos del mapa HTML.
+     */
+
     public class WebAppInterface {
+
+        /**
+         * Captura la seleccion de un punto objetivo en el mapa web.
+         *
+         * @param lat Latitud del objetivo seleccionado.
+         * @param lng Longitud del objetivo seleccionado.
+         */
         @android.webkit.JavascriptInterface
         public void onObjetivoSeleccionado(double lat, double lng) {
             runOnUiThread(() -> {
@@ -151,6 +189,13 @@ public class PantallaActividadFisica extends AppCompatActivity {
             });
         }
     }
+
+    /**
+     * Actualiza los textos de la interfaz con la distancia, coordenadas y control de llegada a meta.
+     *
+     * @param lat Latitud actual obtenida por GPS.
+     * @param lng Longitud actual obtenida por GPS.
+     */
 
     private void actualizarInterfazUbicacion(double lat, double lng) {
         if (!enEjecucion) return;
@@ -185,6 +230,14 @@ public class PantallaActividadFisica extends AppCompatActivity {
         }
     }
 
+    /**
+     * Muestra un dialogo de exito cuando el usuario alcanza el objetivo geografico fijado
+     * guardando los detalles en la base de datos local.
+     *
+     * @param distancia      Distancia total recorrida en metros.
+     * @param tiempoSegundos Tiempo total empleado en segundos.
+     */
+
     private void mostrarDialogoVictoria(float distancia, long tiempoSegundos) {
         long minutos = tiempoSegundos / 60;
         long segundos = tiempoSegundos % 60;
@@ -208,6 +261,11 @@ public class PantallaActividadFisica extends AppCompatActivity {
                 .setCancelable(false)
                 .show();
     }
+
+    /**
+     * Finaliza manualmente el entrenamiento fisico, detiene el servicio GPS,
+     * calcula los totales y persiste los datos en la base de datos local.
+     */
 
     private void finalizarEntrenamiento() {
         stopService(new Intent(this, ServicioSeguimiento.class));
@@ -239,6 +297,10 @@ public class PantallaActividadFisica extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Verifica los permisos de ubicacion en tiempo de ejecucion y obtiene la ultima posicion conocida.
+     */
+
     private void verificarPermisosYObtenerUbicacion() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -253,6 +315,14 @@ public class PantallaActividadFisica extends AppCompatActivity {
         });
     }
 
+    /**
+     * Maneja el resultado de la solicitud de permisos de ubicacion al usuario.
+     *
+     * @param requestCode Codigo de solicitud del permiso.
+     * @param permissions Lista de permisos solicitados.
+     * @param grantResults Resultados de concesion de cada permiso.
+     */
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -264,6 +334,10 @@ public class PantallaActividadFisica extends AppCompatActivity {
             }
         }
     }
+
+    /**
+     * Sobrescribe la accion del boton de atras para mover la tarea a segundo plano sin destruir la actividad.
+     */
 
     @Override
     public void onBackPressed() {

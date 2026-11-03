@@ -11,12 +11,26 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
 
+/**
+ * Actividad de inicio de sision permitiendo al usuario autenticarse mediante correo electronico
+ * y contraseña utilizando FireBase Authentication, ademas de proporcionar un acceso directo hacia
+ * la pantalla de registro.
+ */
+
 public class PantallaLogin extends AppCompatActivity {
 
     private EditText etEmail, etPassword;
     private Button btnLogin;
     private TextView tvIrARegistro;
     private FirebaseAuth mAuth;
+
+    /**
+     * Inicializa la instancia de Firebase Authentication, vincula los componentes de la interfaz
+     * de usuario y configura los listeners de eventos para los botones de inicio de sesion t
+     * redireccion al registro.
+     *
+     * @param savedInstanceState Estado previo guardado de la actividad, si existe.
+     */
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +51,12 @@ public class PantallaLogin extends AppCompatActivity {
             startActivity(intent);
         });
     }
+
+    /**
+     * Valida que todos los campos sean correctos, que no esten vacios y procede a autenticar
+     * al usuario contra el servicio de Firebase Authentication. Si la autenticacion es exitosa,
+     * redirige el usuario al @link MainActivity, de lo contrario, muestra un mensaje de error.
+     */
 
     private void iniciarSesion() {
         String email = etEmail.getText().toString().trim();

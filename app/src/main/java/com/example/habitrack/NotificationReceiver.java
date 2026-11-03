@@ -10,7 +10,22 @@ import android.os.Build;
 
 import androidx.core.app.NotificationCompat;
 
+/**
+ * Receptor de transmisiones encargado de interceptar las alarmas programadas
+ * y disparar notificaciones locales en el dispositivo para hacer recordar al usuario
+ * el cumplimiento de sus habitos.
+ */
+
 public class NotificationReceiver extends BroadcastReceiver {
+
+    /**
+     * Metodo ejecutado al recibirse la señal de la larma programada.
+     * Crea el canal de notificacion, configura la intencion de apertura al pulsar la alerta
+     * y emite la notificacion en el sistema.
+     *
+     * @param context Contexto de la aplicacion en el momento de recibir la transmision.
+     * @param intent  Intento que contiene los parametros adjuntos como el nombre e ID del habito.
+     */
 
     @Override
     public void onReceive(Context context, Intent intent) {

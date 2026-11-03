@@ -32,6 +32,12 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
+/**
+ * Actividad principal que gestiona la visualizacion de los habitos diarios en el panel principal,
+ * el marcado de cumplimientos, calculo de rachas con una barra de progreso adicional, cambio
+ * de tema oscuro a claro o vice versa ademas de programar alarmas.
+ */
+
 public class MainActivity extends AppCompatActivity {
 
     private Button btnReiniciar, btnGestionarHabitos, btnVerCalendario, btnCerrarSesion;
@@ -44,6 +50,13 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences sharedPreferences;
     private static final String PREFS_NAME = "HabiTrackPrefs";
     private static final String KEY_MODO_OSCURO = "modo_oscuro";
+
+    /**
+     * Inicializa los componentes de la interfaz de usuario, configura los listeners de los eventos,
+     * verifica el estado del tema visual, solocita permisos y programa las alarmas diarias.
+     *
+     * @param savedInstanceState Estado previo guardado de la actividad, si exite.
+     */
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,6 +118,11 @@ public class MainActivity extends AppCompatActivity {
         programarNotificacionDiaria();
     }
 
+    /**
+     * Cierra la sesion activa del usuario actual mediante el autentificador de Firebase
+     * y redirige la navegacion hacia la pantalla de inicio de sesion.
+     */
+
     private void cerrarSesion() {
         FirebaseAuth.getInstance().signOut();
 
@@ -113,6 +131,11 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
         finish();
     }
+
+    /**
+     * Despliega un dialogo de seleccion con los habitos existentes para abrir una viste detallada
+     * en el calendario.
+     */
 
     private void mostrarDialogoSeleccionarHabitoParaCalendario() {
         Cursor cursor = dbHelper.obtenerTodosLosHabitos();
@@ -152,6 +175,11 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Metodo del ciclo de vida ejecutado al reanudarse la actividad.
+     * Actualiza automaticamente la barra de progreso, los habitos en el dashboard y las rachas.
+     */
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -159,9 +187,18 @@ public class MainActivity extends AppCompatActivity {
         cargarHabitosDashboard();
     }
 
+    /**
+     * Obtiene la fecha actual formateada en texto estandar.
+     * @return String con la fecha actual en formato yyyy-MM-dd.
+     */
+
     private String obtenerFechaHoy() {
         return new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
     }
+
+    /**
+     * Muestra un dialogo de confirmacion antes de cerrar la sesion activa del usuario.
+     */
     private void mostrarDialogoCerrarSesion() {
         new AlertDialog.Builder(MainActivity.this)
                 .setTitle("Cerrar Sesión")
@@ -170,6 +207,11 @@ public class MainActivity extends AppCompatActivity {
                 .setNegativeButton("Cancelar", null)
                 .show();
     }
+
+    /**
+     * Carga y renderiza dinamicamente en el panel principal los habutos marcados para el dashboard
+     * asignando un CheckBox interactivo a cada uno segun su estado de cumplimiento diario.
+     */
 
     private void cargarHabitosDashboard() {
         if (layoutContenedorHabitos == null) return;
@@ -210,6 +252,11 @@ public class MainActivity extends AppCompatActivity {
         actualizarBarraDeProgreso();
     }
 
+    /**
+     * Calcula el porcentaje de cumplimiento diario de los habitos en el dashboard
+     * y actualiza visualmente el componente de @link ProgressBar.
+     */
+
     private void actualizarBarraDeProgreso() {
         if (progressBarHabitos == null) return;
 
@@ -243,6 +290,11 @@ public class MainActivity extends AppCompatActivity {
         progressBarHabitos.setProgress(porcentaje);
     }
 
+    /**
+     * Consulta y calcula la racha consecutiva maxima entre todos los habitos del dashboard
+     * para mostrarla en la interfaz de usuario.
+     */
+
     private void actualizarTextoRacha() {
         if (tvRacha == null) return;
         Cursor cursor = dbHelper.obtenerHabitosDashboard();
@@ -267,6 +319,10 @@ public class MainActivity extends AppCompatActivity {
         tvRacha.setText("Racha: " + rachaMaxima + " días");
     }
 
+    /**
+     * Muestra un dialogo de advertencia para confirmar el reinicio completo de todos los datos y progresos.
+     */
+
     private void mostrarDialogoReiniciar() {
         new AlertDialog.Builder(this)
                 .setTitle("Reiniciar progreso")
@@ -281,6 +337,11 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Cierra la conexion abierta con el @link DatabaseHelper al destruir la actividad con el
+     * proposito de prevenir fugas de recursos.
+     */
+
     @Override
     protected void onDestroy() {
         if (dbHelper != null) {
@@ -289,6 +350,10 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
+    /**
+     * Solicita en tiempo de ejecucion el permiso de notificaciones
+     */
+
     private void solicitarPermisoNotificaciones() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -296,6 +361,11 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
+    /**
+     * Programa una alarma repetitiva diaria mediante el sistema de @link AlarmManager
+     * para recordar al usuario el registro de sus habitos.
+     */
 
     private void programarNotificacionDiaria() {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);

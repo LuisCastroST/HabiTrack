@@ -17,6 +17,12 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
+/**
+ * Servicio en primer plano encargado de gestionar el rastreo GPS continuo medianto los servicios
+ * de ubicacion de Google Play Services. Calcula la distancia recorrida tramo por tramo
+ * y emite transmisiones locales para aztualizar la interfaz en tiempo real.
+ */
+
 public class ServicioSeguimiento extends Service {
 
     private static final String CHANNEL_ID = "HabiTrackServiceChannel";
@@ -28,6 +34,12 @@ public class ServicioSeguimiento extends Service {
     public static float distanciaTotalMetros = 0;
     public static long tiempoInicioMs = 0;
     private Location ubicacionAnterior = null;
+
+    /**
+     * Metodo que se ejecuta al iniciarse el servicio reiniciando los contadores metricos y de tiempo,
+     * configura el canal de notificacion persistente, inicia el servicio en primer plano y activa
+     * las peticiones de actualizacion de ubicacion por GPS.
+     */
 
     @Override
     public void onCreate() {
@@ -53,6 +65,12 @@ public class ServicioSeguimiento extends Service {
         startForeground(NOTIFICATION_ID, notification);
         iniciarUbicacion();
     }
+
+    /**
+     * Configura y solicita las actualizaciones de ubicacion de alta precision al cliente de
+     * localizacion, filtrando saltos inconsistentes de precision y emitiendo un broadcast
+     * con los datos calculados.
+     */
 
     private void iniciarUbicacion() {
         LocationRequest locationRequest = LocationRequest.create();
@@ -91,6 +109,11 @@ public class ServicioSeguimiento extends Service {
         }
     }
 
+    /**
+     * Crea el canal de notificacion requerido para servicios en primer plano en versiones
+     * de Android 8.0 o superiores.
+     */
+
     private void crearCanalNotificacion() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel serviceChannel = new NotificationChannel(
@@ -105,6 +128,11 @@ public class ServicioSeguimiento extends Service {
         }
     }
 
+    /**
+     * Metodo del ciclo de bida del servicio ejecutado al destruirse removiendo las actualizaciones
+     * de ubucacion pendientes para liberar recursos del sistema GPS
+     */
+
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -112,6 +140,14 @@ public class ServicioSeguimiento extends Service {
             fusedLocationClient.removeLocationUpdates(locationCallback);
         }
     }
+
+    /**
+     * Metodo obligatorio para servicios vinculados.
+     * Como este servicio opera de forma independiente, devuelve un null.
+     *
+     * @param intent Intent que vincula el componente.
+     * @return IBinder Nulo en esta implementacion.
+     */
 
     @Nullable
     @Override

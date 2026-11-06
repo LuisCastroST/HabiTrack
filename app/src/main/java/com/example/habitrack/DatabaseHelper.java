@@ -236,7 +236,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 HabitContract.HabitEntry._ID + " = ?",
                 new String[]{String.valueOf(idHabito)}
         );
-        db.close();
         return filasAfectadas > 0;
     }
 
@@ -444,7 +443,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         db.delete(HabitContract.RegistroEntry.TABLE_NAME, null, null);
         db.delete(HabitContract.HabitEntry.TABLE_NAME, null, null);
-        db.close();
     }
 
     /**
@@ -499,7 +497,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             }
             cursor.close();
         }
-        db.close();
         return racha;
     }
 }

@@ -119,6 +119,40 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+     * Inicializa y despliega el menu de opciones en la barra superior.
+     *
+     * @param menu Objeto Menu donde se inflan las opciones definidas en el recurso XML.
+     * @return boolean True para mostrar el menu en la pantalla.
+     */
+
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    /**
+     * Gestiona las acciones ejecutadas al hacer click sobre los elementos interactivos
+     * en el menu superior.
+     *
+     * @param item El elemento de menu seleccionado por el usuario.
+     * @return boolean True si la seleccion fue procesada.
+     */
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+
+        if (id == R.id.action_settings) {
+            Toast.makeText(this, "Abrir configuración", Toast.LENGTH_SHORT).show();
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    /**
      * Cierra la sesion activa del usuario actual mediante el autentificador de Firebase
      * y redirige la navegacion hacia la pantalla de inicio de sesion.
      */

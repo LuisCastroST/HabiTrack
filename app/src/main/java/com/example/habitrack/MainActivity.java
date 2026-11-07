@@ -34,13 +34,13 @@ import java.util.Locale;
 
 /**
  * Actividad principal que gestiona la visualizacion de los habitos diarios en el panel principal,
- * el marcado de cumplimientos, calculo de rachas con una barra de progreso adicional, cambio
- * de tema oscuro a claro o vice versa ademas de programar alarmas.
+ * el marcado de cumplimientos, calculo de rachas con una barra de progreso adicional,
+ * y programacion de alarmas.
  */
 
 public class MainActivity extends AppCompatActivity {
 
-    private Button btnReiniciar, btnGestionarHabitos, btnVerCalendario, btnCerrarSesion;
+    private Button btnGestionarHabitos, btnVerCalendario, btnCerrarSesion;
     private Switch switchTema;
     private ProgressBar progressBarHabitos;
     private TextView tvRacha;
@@ -49,7 +49,6 @@ public class MainActivity extends AppCompatActivity {
     private DatabaseHelper dbHelper;
     private SharedPreferences sharedPreferences;
     private static final String PREFS_NAME = "HabiTrackPrefs";
-    private static final String KEY_MODO_OSCURO = "modo_oscuro";
 
     /**
      * Inicializa los componentes de la interfaz de usuario, configura los listeners de los eventos,
@@ -67,26 +66,18 @@ public class MainActivity extends AppCompatActivity {
         dbHelper = new DatabaseHelper(this);
         sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
-        btnReiniciar = findViewById(R.id.btnReiniciar);
         btnGestionarHabitos = findViewById(R.id.btnAgregarHabito);
         btnVerCalendario = findViewById(R.id.btnVerCalendario);
-        switchTema = findViewById(R.id.switchModoOscuro);
         progressBarHabitos = findViewById(R.id.progressBarHabitos);
         btnCerrarSesion = findViewById(R.id.btnCerrarSesion);
         tvRacha = findViewById(R.id.tvRacha);
         layoutContenedorHabitos = findViewById(R.id.layoutContenedorHabitos);
 
-        boolean modoOscuroActivo = sharedPreferences.getBoolean(KEY_MODO_OSCURO, false);
-        if (switchTema != null) {
-            switchTema.setChecked(modoOscuroActivo);
-            switchTema.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                sharedPreferences.edit().putBoolean(KEY_MODO_OSCURO, isChecked).apply();
-                if (isChecked) {
-                    AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-                } else {
-                    AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-                }
-            });
+        boolean modoOscuroActivo = sharedPreferences.getBoolean("modo_oscuro", false);
+        if (modoOscuroActivo) {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+        } else {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
         }
 
         if (btnGestionarHabitos != null) {
@@ -98,10 +89,6 @@ public class MainActivity extends AppCompatActivity {
 
         if (btnVerCalendario != null) {
             btnVerCalendario.setOnClickListener(v -> mostrarDialogoSeleccionarHabitoParaCalendario());
-        }
-
-        if (btnReiniciar != null) {
-            btnReiniciar.setOnClickListener(v -> mostrarDialogoReiniciar());
         }
 
         if (btnCerrarSesion != null) {
@@ -145,7 +132,8 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
 
         if (id == R.id.action_settings) {
-            Toast.makeText(this, "Abrir configuración", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(MainActivity.this, PantallaConfiguracion.class);
+            startActivity(intent);
             return true;
         }
 
@@ -351,24 +339,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         tvRacha.setText("Racha: " + rachaMaxima + " días");
-    }
-
-    /**
-     * Muestra un dialogo de advertencia para confirmar el reinicio completo de todos los datos y progresos.
-     */
-
-    private void mostrarDialogoReiniciar() {
-        new AlertDialog.Builder(this)
-                .setTitle("Reiniciar progreso")
-                .setMessage("Deseas reiniciar todo el progrso?")
-                .setPositiveButton("Reiniciar", (dialog, which) -> {
-                    DatabaseHelper dbHelper = new DatabaseHelper(MainActivity.this);
-                    dbHelper.reiniciarTodo();
-                    Toast.makeText(MainActivity.this, "Progreso reiniciado correctamente", Toast.LENGTH_SHORT).show();
-                    recreate();
-                })
-                .setNegativeButton("Cancelar", null)
-                .show();
     }
 
     /**

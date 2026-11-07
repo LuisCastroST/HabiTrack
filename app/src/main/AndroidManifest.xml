@@ -63,11 +63,22 @@
 
         <service
             android:name=".ServicioSeguimiento"
-            android:foregroundServiceType="location"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <activity
+            android:name=".PantallaConfiguracion"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".PantallaConfiguracion"
+            android:exported="false"
+            android:label="Configuración"
+            android:parentActivityName=".MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+
 
     </application>
-
-
 
 </manifest>

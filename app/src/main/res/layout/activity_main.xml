@@ -12,11 +12,6 @@
         android:gravity="end"
         android:orientation="horizontal">
 
-        <Switch
-            android:id="@+id/switchModoOscuro"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Modo Oscuro" />
     </LinearLayout>
 
     <TextView
@@ -76,13 +71,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Ver Calendario" />
-
-        <Button
-            android:id="@+id/btnReiniciar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Reiniciar Progreso"
-            android:textColor="#FF5252" />
 
         <Button
             android:id="@+id/btnCerrarSesion"

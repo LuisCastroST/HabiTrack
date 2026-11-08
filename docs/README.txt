@@ -83,6 +83,7 @@ app/
 │   │   │   ├── PantallaLogin.java            Inicio de sesion con Firebase Authentication
 │   │   │   ├── PantallaRegistro.java         Registro de nuevos usuarios
 │   │   │   ├── GestionarHabitos.java         Modulo de creacion y administracion de habitos
+│   │   │   ├── PantallaConfiguracion.java    Gestion de configuraciones, accesibilidad, cuenta y permisos.
 │   │   │   ├── CalendarioActivity.java       Vista detallada de cumplimiento historico
 │   │   │   ├── CalendarioAdapter.java        Adaptador para el grid/lista del calendario
 │   │   │   ├── PantallaActividadFisica.java  Gestion de actividad fisica y mapas

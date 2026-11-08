@@ -43,11 +43,9 @@
     <string name="toast_error_guardar">Error al guardar el hábito</string>
     <string name="toast_progreso_eliminado">Progreso eliminado</string>
     <string name="toast_habito_incompleto">No has completado todos tus hábitos del día</string>
-    <resources>
         <string-array name="opciones_tema">
             <item>Claro</item>
             <item>Oscuro</item>
             <item>Sistema</item>
         </string-array>
-    </resources>
 </resources>

@@ -41,7 +41,7 @@
                     android:text="Cuenta de Usuario"
                     android:textStyle="bold"
                     android:textSize="14sp"
-                    android:textColor="@color/material_dynamic_primary40"
+                    android:textColor="?attr/colorPrimary"
                     android:layout_marginBottom="8dp" />
 
                 <TextView
@@ -76,7 +76,7 @@
                     android:text="Apariencia y Accesibilidad"
                     android:textStyle="bold"
                     android:textSize="14sp"
-                    android:textColor="@color/material_dynamic_primary40"
+                    android:textColor="?attr/colorPrimary"
                     android:layout_marginBottom="12dp" />
 
                 <TextView
@@ -154,14 +154,14 @@
                     android:text="Permisos del Sistema"
                     android:textStyle="bold"
                     android:textSize="14sp"
-                    android:textColor="@color/material_dynamic_primary40"
+                    android:textColor="?attr/colorPrimary"
                     android:layout_marginBottom="8dp" />
 
                 <Button
                     android:id="@+id/btnGestionarPermisos"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Abrir Ajustes de Permisos (GPS / Notif.)"
+                    android:text="Abrir Ajustes de Permisos"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_marginBottom="8dp" />
 

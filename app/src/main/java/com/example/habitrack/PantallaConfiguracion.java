@@ -46,7 +46,7 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_configuracion);
+        setContentView(R.layout.activity_pantalla_configuracion);
 
         dbHelper = new DatabaseHelper(this);
         sharedPreferences = getSharedPreferences("HabiTrackPrefs", Context.MODE_PRIVATE);
@@ -90,7 +90,6 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerThemeOptions.setAdapter(adapter);
-        spinnerThemeOptions.setOnItemSelectedListener(this);
     }
 
     /**
@@ -107,6 +106,8 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
         switchVozBotones.setChecked(vozActiva);
         switchAltoContraste.setChecked(altoContrasteActivo);
         switchNotificaciones.setChecked(notifActivas);
+
+        spinnerThemeOptions.setOnItemSelectedListener(this);
     }
 
     /**
@@ -148,7 +149,13 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
      */
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-        sharedPreferences.edit().putInt("tema_app", position).apply();
+        int temaGuardado = sharedPreferences.getInt("tema_app", 2);
+
+        if (position == temaGuardado) {
+            return;
+        }
+
+        sharedPreferences.edit().putInt("tema_app", position).commit();
         switch (position) {
             case 0:
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);

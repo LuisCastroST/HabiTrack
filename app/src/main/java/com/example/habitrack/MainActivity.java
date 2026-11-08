@@ -16,6 +16,8 @@ import android.widget.ProgressBar;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.view.Menu;
+import android.view.MenuItem;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
@@ -72,14 +74,22 @@ public class MainActivity extends AppCompatActivity {
         btnCerrarSesion = findViewById(R.id.btnCerrarSesion);
         tvRacha = findViewById(R.id.tvRacha);
         layoutContenedorHabitos = findViewById(R.id.layoutContenedorHabitos);
+        androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
 
-        boolean modoOscuroActivo = sharedPreferences.getBoolean("modo_oscuro", false);
-        if (modoOscuroActivo) {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-        } else {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+        int temaSeleccionado = sharedPreferences.getInt("tema_app", 2);
+        switch (temaSeleccionado) {
+            case 0:
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+                break;
+            case 1:
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+                break;
+            case 2:
+            default:
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+                break;
         }
-
         if (btnGestionarHabitos != null) {
             btnGestionarHabitos.setOnClickListener(v -> {
                 Intent intent = new Intent(MainActivity.this, GestionarHabitos.class);

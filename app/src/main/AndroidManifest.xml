@@ -69,11 +69,6 @@
         <activity
             android:name=".PantallaConfiguracion"
             android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".PantallaConfiguracion"
-            android:exported="false"
             android:label="Configuración"
             android:parentActivityName=".MainActivity"
             android:windowSoftInputMode="adjustResize" />

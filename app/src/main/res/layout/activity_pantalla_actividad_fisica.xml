@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="#121212">
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -28,7 +28,7 @@
             android:text="Cargando..."
             android:textSize="18sp"
             android:textStyle="bold"
-            android:textColor="#FFFFFF"
+            android:textColor="?attr/colorOnSurface"
             android:gravity="center" />
     </LinearLayout>
 
@@ -37,7 +37,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Ubicación GPS: Buscando señal..."
-        android:textColor="#B0BEC5"
+        android:textColor="?android:attr/textColorSecondary"
         android:paddingBottom="8dp" />
 
     <WebView

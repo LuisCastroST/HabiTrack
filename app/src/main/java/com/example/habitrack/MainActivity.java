@@ -49,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout layoutContenedorHabitos;
 
     private DatabaseHelper dbHelper;
+    private TtsHelper ttsHelper;
     private SharedPreferences sharedPreferences;
     private static final String PREFS_NAME = "HabiTrackPrefs";
 
@@ -67,6 +68,12 @@ public class MainActivity extends AppCompatActivity {
 
         dbHelper = new DatabaseHelper(this);
         sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+
+        boolean vozHabilitada = sharedPreferences.getBoolean("voz_botones", false);
+        if (vozHabilitada) {
+            ttsHelper = new TtsHelper(this);
+            ttsHelper.hablar("Panel principal de HabiTrack cargado.");
+        }
 
         btnGestionarHabitos = findViewById(R.id.btnAgregarHabito);
         btnVerCalendario = findViewById(R.id.btnVerCalendario);
@@ -352,19 +359,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Cierra la conexion abierta con el @link DatabaseHelper al destruir la actividad con el
-     * proposito de prevenir fugas de recursos.
-     */
-
-    @Override
-    protected void onDestroy() {
-        if (dbHelper != null) {
-            dbHelper.close();
-        }
-        super.onDestroy();
-    }
-
-    /**
      * Solicita en tiempo de ejecucion el permiso de notificaciones
      */
 
@@ -374,6 +368,22 @@ public class MainActivity extends AppCompatActivity {
                 requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 101);
             }
         }
+    }
+
+    /**
+     * Cierra la conexion abierta con el link @Databasehelper y libera el TTS al destruir
+     * la actividad para prevenir una fuga de recursos.
+     */
+
+    @Override
+    protected void onDestroy() {
+        if (ttsHelper != null) {
+            ttsHelper.liberar();
+        }
+        if (dbHelper != null) {
+            dbHelper.close();
+        }
+        super.onDestroy();
     }
 
     /**

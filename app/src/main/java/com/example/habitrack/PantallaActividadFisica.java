@@ -55,6 +55,9 @@ public class PantallaActividadFisica extends AppCompatActivity {
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1002;
     private boolean mapaListo = false;
 
+    private TtsHelper ttsHelper;
+    private SharedPreferences sharedPreferences;
+
     /**
      * Receptor de transmisiones para actualizar coordenadas y la distancia recorrida en tiempo
      * real enviadas por el servicio de ubicacion.
@@ -83,6 +86,14 @@ public class PantallaActividadFisica extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pantalla_actividad_fisica);
+
+        sharedPreferences = getSharedPreferences("HabiTrackPrefs", Context.MODE_PRIVATE);
+
+        boolean vozHabilitada = sharedPreferences.getBoolean("voz_botones", false);
+        if (vozHabilitada) {
+            ttsHelper = new TtsHelper(this);
+            ttsHelper.hablar("Iniciando pantalla de actividad física. GPS activo.");
+        }
 
         SharedPreferences prefsTema = getSharedPreferences("HabiTrackPrefs", Context.MODE_PRIVATE);
         int temaSeleccionado = prefsTema.getInt("tema_app", 2);
@@ -360,4 +371,21 @@ public class PantallaActividadFisica extends AppCompatActivity {
     public void onBackPressed() {
         moveTaskToBack(true);
     }
+
+
+    /**
+     * Cierra la conexion abierta con el link @Databasehelper y libera el TTS al destruir
+     * la actividad para prevenir una fuga de recursos.
+     */
+
+@Override
+protected void onDestroy() {
+    if (ttsHelper != null) {
+        ttsHelper.liberar();
+    }
+    if (dbHelper != null) {
+        dbHelper.close();
+    }
+    super.onDestroy();
+}
 }

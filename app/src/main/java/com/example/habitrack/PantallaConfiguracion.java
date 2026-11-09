@@ -36,6 +36,7 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
 
     private DatabaseHelper dbHelper;
     private SharedPreferences sharedPreferences;
+    private TtsHelper ttsHelper;
 
     /**
      * Inicializa los componentes de la actividad, vincula las vistas XML,
@@ -50,6 +51,8 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
 
         dbHelper = new DatabaseHelper(this);
         sharedPreferences = getSharedPreferences("HabiTrackPrefs", Context.MODE_PRIVATE);
+
+        ttsHelper = new TtsHelper(this);
 
         tvUsuarioEmail = findViewById(R.id.tvUsuarioEmail);
         tvEstadoUbicacion = findViewById(R.id.tvEstadoUbicacion);
@@ -115,9 +118,15 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
      */
     private void configurarEventosListener() {
         switchVozBotones.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            sharedPreferences.edit().putBoolean("voz_botones", isChecked).apply();
+            sharedPreferences.edit().putBoolean("voz_botones", isChecked).commit();
             Toast.makeText(this, isChecked ? "Lectura de voz activada" : "Lectura de voz desactivada", Toast.LENGTH_SHORT).show();
+
+            if (isChecked) {
+                ttsHelper.hablar("Lectura de voz activada correctamente.");
+            }
         });
+
+
 
         switchAltoContraste.setOnCheckedChangeListener((buttonView, isChecked) -> {
             sharedPreferences.edit().putBoolean("alto_contraste", isChecked).apply();
@@ -192,5 +201,21 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();
+    }
+
+    /**
+     * Cierra la conexion abierta con el link @Databasehelper y libera el TTS al destruir
+     * la actividad para prevenir una fuga de recursos.
+     */
+
+    @Override
+    protected void onDestroy() {
+        if (ttsHelper != null) {
+            ttsHelper.liberar();
+        }
+        if (dbHelper != null) {
+            dbHelper.close();
+        }
+        super.onDestroy();
     }
 }

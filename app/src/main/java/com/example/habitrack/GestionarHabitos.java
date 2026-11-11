@@ -6,6 +6,7 @@ import android.app.PendingIntent;
 import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
@@ -48,6 +49,10 @@ public class GestionarHabitos extends AppCompatActivity {
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
     private int habitoIdSeleccionadoParaGps = -1;
 
+    private SharedPreferences sharedPreferences;
+    private static final String PREFS_NAME = "HabiTrackPrefs";
+    private TtsHelper ttsHelper;
+
     /**
      * Estructura de datos interna para representar un habito en la interfaz.
      */
@@ -71,6 +76,7 @@ public class GestionarHabitos extends AppCompatActivity {
     /**
      * Inicializa los componentes de la interfaz de usuario y carga la lista dinamica de habitos
      * almacenados en la base de datos local.
+     *
      * @param savedInstanceState Estado previo guardado de la actividad, si existe.
      */
 
@@ -80,14 +86,21 @@ public class GestionarHabitos extends AppCompatActivity {
         setContentView(R.layout.activity_gestionar_habitos);
 
         dbHelper = new DatabaseHelper(this);
+        sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
         layoutListaHabitos = findViewById(R.id.layoutListaHabitos);
         btnNuevoHabito = findViewById(R.id.btnNuevoHabito);
 
         if (btnNuevoHabito != null) {
-            btnNuevoHabito.setOnClickListener(v -> mostrarDialogoCrearHabito());
+            btnNuevoHabito.setOnClickListener(v -> {
+                hablarSiHabilitado("Nuevo habito");
+                mostrarDialogoCrearHabito();
+            });
         }
+
+        sincronizarTtsConPreferencia();
+        hablarSiHabilitado("Gestion de habitos cargada.");
 
         cargarListaHabitos();
     }
@@ -165,7 +178,6 @@ public class GestionarHabitos extends AppCompatActivity {
      * Crea dinamicamente la fila grafica que le corresponde al habito, incluyendo botones de gps,
      * historial, switches de dashboard y boton de eliminacion.
      *
-     *
      * @param item Objeto con los datos del habito a renderizas.
      * @param esFisico Booleano que indica si el habito pertenece a una actividad fisica o no.
      * @return LinearLayout con la estructura visual de la fila completa.
@@ -198,7 +210,10 @@ public class GestionarHabitos extends AppCompatActivity {
         LinearLayout.LayoutParams paramsText = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
         tvInfo.setLayoutParams(paramsText);
         tvInfo.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        tvInfo.setOnClickListener(v -> mostrarTimePicker(item.id, item.nombre));
+        tvInfo.setOnClickListener(v -> {
+            hablarSiHabilitado("Configurar recordatorio");
+            mostrarTimePicker(item.id, item.nombre);
+        });
 
         fila.addView(tvColor);
         fila.addView(tvInfo);
@@ -209,6 +224,7 @@ public class GestionarHabitos extends AppCompatActivity {
             btnGps.setTextSize(12);
             btnGps.setPadding(15, 0, 15, 0);
             btnGps.setOnClickListener(v -> {
+                hablarSiHabilitado("Actividad fisica");
                 Intent intent = new Intent(GestionarHabitos.this, PantallaActividadFisica.class);
                 intent.putExtra("HABITO_ID", item.id);
                 startActivity(intent);
@@ -221,6 +237,7 @@ public class GestionarHabitos extends AppCompatActivity {
         btnCalendario.setTextSize(12);
         btnCalendario.setPadding(15, 0, 15, 0);
         btnCalendario.setOnClickListener(v -> {
+            hablarSiHabilitado("Historial");
             Intent intent = new Intent(GestionarHabitos.this, CalendarioActivity.class);
             intent.putExtra("HABITO_ID", item.id);
             startActivity(intent);
@@ -230,6 +247,7 @@ public class GestionarHabitos extends AppCompatActivity {
         Switch switchDashboard = new Switch(this);
         switchDashboard.setChecked(item.enDashboard);
         switchDashboard.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            hablarSiHabilitado(isChecked ? "Visible en dashboard" : "Oculto del dashboard");
             dbHelper.actualizarVisibilidadDashboard(item.id, isChecked);
         });
         fila.addView(switchDashboard);
@@ -238,7 +256,10 @@ public class GestionarHabitos extends AppCompatActivity {
         btnEliminar.setText("X");
         btnEliminar.setTextSize(12);
         btnEliminar.setPadding(15, 0, 15, 0);
-        btnEliminar.setOnClickListener(v -> mostrarDialogoConfirmacionEliminar(item.id, item.nombre));
+        btnEliminar.setOnClickListener(v -> {
+            hablarSiHabilitado("Eliminar habito");
+            mostrarDialogoConfirmacionEliminar(item.id, item.nombre);
+        });
         fila.addView(btnEliminar);
 
         return fila;
@@ -248,10 +269,10 @@ public class GestionarHabitos extends AppCompatActivity {
      * Configura o actualiza una alarma que se repite diariamente mediante el sistema
      * de AlarmManager para notificar al usuario sobre un habito en especifico.
      *
-     * @param habitoId     ID unico del habito asociado a la notificacion.
+     * @param habitoId ID unico del habito asociado a la notificacion.
      * @param nombreHabito Nombre del habito que aparecera en el aviso.
-     * @param nuevaHora    Hora programada en formato de 24H.
-     * @param nuevoMinuto  Minuto programado para la alarma.
+     * @param nuevaHora Hora programada en formato de 24H.
+     * @param nuevoMinuto Minuto programado para la alarma.
      */
 
     public void actualizarNotificacionHabito(int habitoId, String nombreHabito, int nuevaHora, int nuevoMinuto) {
@@ -325,7 +346,7 @@ public class GestionarHabitos extends AppCompatActivity {
     /**
      * Muestra un dialogo de confirmacion antes de permanentemente eliminar un habito del sistema.
      *
-     * @param habitoId     ID del habito a eliminar.
+     * @param habitoId ID del habito a eliminar.
      * @param nombreHabito Nombre descriptivo del habito para ser mostrado en la alerta.
      */
 
@@ -434,7 +455,7 @@ public class GestionarHabitos extends AppCompatActivity {
      * Le pregunta al usuario si desea configurar un recordatorio en el horario especifico
      * tras crear un habito.
      *
-     * @param habitoId     ID unico del habito recien creado.
+     * @param habitoId ID unico del habito recien creado.
      * @param nombreHabito Nombre del habito.
      */
 
@@ -453,7 +474,7 @@ public class GestionarHabitos extends AppCompatActivity {
     /**
      * Despliega un selector de hora para programar la alarma de notificacion del habito.
      *
-     * @param habitoId     ID unico del habito.
+     * @param habitoId ID unico del habito.
      * @param nombreHabito Nombre del habito.
      */
 
@@ -471,12 +492,47 @@ public class GestionarHabitos extends AppCompatActivity {
     }
 
     /**
+     * Sincroniza el estado del motor TTS con la preferencia guardada.
+     */
+    private void sincronizarTtsConPreferencia() {
+        boolean vozHabilitada = sharedPreferences.getBoolean("voz_botones", false);
+
+        if (vozHabilitada && ttsHelper == null) {
+            ttsHelper = new TtsHelper(getApplicationContext());
+        } else if (!vozHabilitada && ttsHelper != null) {
+            ttsHelper.liberar();
+            ttsHelper = null;
+        }
+    }
+
+    /**
+     * Reproduce un texto por voz de forma segura si el TTS se encuentra habilitado.
+     */
+    private void hablarSiHabilitado(String texto) {
+        if (ttsHelper != null) {
+            ttsHelper.hablar(texto);
+        }
+    }
+
+    /**
+     * Ciclo de vida Sincronizando las preferencias al reanudar la actividad.
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        sincronizarTtsConPreferencia();
+    }
+
+    /**
      * Cierra la conexion abierta con el DatabaseHelper al destruir la actividad para prevenir
      * fugas de recursos.
      */
 
     @Override
     protected void onDestroy() {
+        if (ttsHelper != null) {
+            ttsHelper.liberar();
+        }
         if (dbHelper != null) {
             dbHelper.close();
         }

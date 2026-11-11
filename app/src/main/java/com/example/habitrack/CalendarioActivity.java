@@ -1,8 +1,10 @@
 package com.example.habitrack;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
+import android.content.SharedPreferences;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
@@ -16,9 +18,15 @@ import java.util.List;
 public class CalendarioActivity extends AppCompatActivity {
 
     private RecyclerView recyclerViewHistorial;
+
+    private SharedPreferences sharedPreferences;
     private TextView tvTituloHabito;
     private DatabaseHelper dbHelper;
     private int habitoId;
+
+    private static final String PREFS_NAME = "HabiTrackPrefs";
+
+    private TtsHelper ttsHelper;
 
     /**
      * Inicializa los componentes de la interfaz, recupera el identificador del habito enviado
@@ -33,6 +41,7 @@ public class CalendarioActivity extends AppCompatActivity {
         setContentView(R.layout.activity_calendario);
 
         dbHelper = new DatabaseHelper(this);
+        sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         habitoId = getIntent().getIntExtra("HABITO_ID", -1);
 
         recyclerViewHistorial = findViewById(R.id.recyclerCalendario);
@@ -42,7 +51,33 @@ public class CalendarioActivity extends AppCompatActivity {
             recyclerViewHistorial.setLayoutManager(new LinearLayoutManager(this));
         }
 
+        sincronizarTtsConPreferencia();
+        hablarSiHabilitado("Historial de cumplimiento");
+
         cargarHistorialHabito();
+    }
+
+    /**
+     * Sincroniza el estado del motor TTS con la preferencia guardada.
+     */
+    private void sincronizarTtsConPreferencia() {
+        boolean vozHabilitada = sharedPreferences.getBoolean("voz_botones", false);
+
+        if (vozHabilitada && ttsHelper == null) {
+            ttsHelper = new TtsHelper(getApplicationContext());
+        } else if (!vozHabilitada && ttsHelper != null) {
+            ttsHelper.liberar();
+            ttsHelper = null;
+        }
+    }
+
+    /**
+     * Reproduce un texto por voz de forma segura si el TTS se encuentra habilitado.
+     */
+    private void hablarSiHabilitado(String texto) {
+        if (ttsHelper != null) {
+            ttsHelper.hablar(texto);
+        }
     }
 
     /**
@@ -58,6 +93,15 @@ public class CalendarioActivity extends AppCompatActivity {
                 recyclerViewHistorial.setAdapter(adapter);
             }
         }
+    }
+
+    /**
+     * Ciclo de vida: Sincroniza preferencias al reanudar la actividad.
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        sincronizarTtsConPreferencia();
     }
 
     /**

@@ -23,19 +23,20 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 /**
- * Pantalla encargada de gestionar la configuraciOn general permitiendo administrar la cuenta
- * de usuario, preferencias, accesibilidad, permisos del sistema y el reinicio de la base
- * de datos local.
+ * Pantalla encargada de gestionar la configuracion general permitiendo administrar la cuenta
+ * de usuario, preferencias, accesibilidad, permisos del sistema y el reinicio de la base de datos local.
  */
 public class PantallaConfiguracion extends AppCompatActivity implements AdapterView.OnItemSelectedListener {
 
     private TextView tvUsuarioEmail, tvEstadoUbicacion;
     private Spinner spinnerThemeOptions;
-    private Switch switchVozBotones, switchAltoContraste, switchNotificaciones;
+    private Switch switchVozBotones, switchNotificaciones;
     private Button btnGestionarPermisos, btnReiniciarDatos;
+    private static final String KEY_TTS_PENDIENTE = "tts_anuncio_pendiente";
 
     private DatabaseHelper dbHelper;
     private SharedPreferences sharedPreferences;
+    private static final String PREFS_NAME = "HabiTrackPrefs";
     private TtsHelper ttsHelper;
 
     /**
@@ -50,15 +51,12 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
         setContentView(R.layout.activity_pantalla_configuracion);
 
         dbHelper = new DatabaseHelper(this);
-        sharedPreferences = getSharedPreferences("HabiTrackPrefs", Context.MODE_PRIVATE);
-
-        ttsHelper = new TtsHelper(this);
+        sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
         tvUsuarioEmail = findViewById(R.id.tvUsuarioEmail);
         tvEstadoUbicacion = findViewById(R.id.tvEstadoUbicacion);
         spinnerThemeOptions = findViewById(R.id.spinnerThemeOptions);
         switchVozBotones = findViewById(R.id.switchVozBotones);
-        switchAltoContraste = findViewById(R.id.switchAltoContraste);
         switchNotificaciones = findViewById(R.id.switchNotificaciones);
         btnGestionarPermisos = findViewById(R.id.btnGestionarPermisos);
         btnReiniciarDatos = findViewById(R.id.btnReiniciarDatos);
@@ -67,6 +65,61 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
         configurarSpinnerTemas();
         cargarPreferenciasGuardadas();
         configurarEventosListener();
+
+        sincronizarTtsConPreferencia();
+        reproducirAnuncioPendiente();
+    }
+
+    /**
+     * Sincroniza el estado del motor TTS con la preferencia guardada.
+     */
+    private void sincronizarTtsConPreferencia() {
+        boolean vozHabilitada = sharedPreferences.getBoolean("voz_botones", false);
+
+        if (vozHabilitada && ttsHelper == null) {
+            ttsHelper = new TtsHelper(getApplicationContext());
+        } else if (!vozHabilitada && ttsHelper != null) {
+            ttsHelper.liberar();
+            ttsHelper = null;
+        }
+    }
+
+    /**
+     * Reproduce un texto por voz de forma segura si el TTS se encuentra habilitado.
+     */
+    private void hablarSiHabilitado(String texto) {
+        if (ttsHelper != null) {
+            ttsHelper.hablar(texto);
+        }
+    }
+
+    /**
+     * Reproduce y limpia cualquier anuncio pendiente guardado antes de recrear la actividad.
+     */
+    private void reproducirAnuncioPendiente() {
+        if (!sharedPreferences.getBoolean("voz_botones", false)) {
+            sharedPreferences.edit()
+                    .remove(KEY_TTS_PENDIENTE)
+                    .apply();
+            return;
+        }
+
+        String anuncio = sharedPreferences.getString(
+                KEY_TTS_PENDIENTE,
+                null
+        );
+
+        if (anuncio == null) {
+            return;
+        }
+
+        sharedPreferences.edit()
+                .remove(KEY_TTS_PENDIENTE)
+                .apply();
+
+        spinnerThemeOptions.post(() ->
+                hablarSiHabilitado(anuncio)
+        );
     }
 
     /**
@@ -103,11 +156,9 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
         spinnerThemeOptions.setSelection(temaSeleccionado);
 
         boolean vozActiva = sharedPreferences.getBoolean("voz_botones", false);
-        boolean altoContrasteActivo = sharedPreferences.getBoolean("alto_contraste", false);
         boolean notifActivas = sharedPreferences.getBoolean("notificaciones", true);
 
         switchVozBotones.setChecked(vozActiva);
-        switchAltoContraste.setChecked(altoContrasteActivo);
         switchNotificaciones.setChecked(notifActivas);
 
         spinnerThemeOptions.setOnItemSelectedListener(this);
@@ -118,34 +169,47 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
      */
     private void configurarEventosListener() {
         switchVozBotones.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            sharedPreferences.edit().putBoolean("voz_botones", isChecked).commit();
-            Toast.makeText(this, isChecked ? "Lectura de voz activada" : "Lectura de voz desactivada", Toast.LENGTH_SHORT).show();
+            sharedPreferences.edit()
+                    .putBoolean("voz_botones", isChecked)
+                    .apply();
+
+            Toast.makeText(
+                    this,
+                    isChecked
+                            ? "Lectura de voz activada"
+                            : "Lectura de voz desactivada",
+                    Toast.LENGTH_SHORT
+            ).show();
 
             if (isChecked) {
-                ttsHelper.hablar("Lectura de voz activada correctamente.");
+                sincronizarTtsConPreferencia();
+                hablarSiHabilitado("Lectura de voz activada.");
+            } else {
+                if (ttsHelper != null) {
+                    ttsHelper.liberar();
+                    ttsHelper = null;
+                }
             }
-        });
-
-
-
-        switchAltoContraste.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            sharedPreferences.edit().putBoolean("alto_contraste", isChecked).apply();
-            Toast.makeText(this, isChecked ? "Alto contraste activado" : "Alto contraste desactivado", Toast.LENGTH_SHORT).show();
         });
 
         switchNotificaciones.setOnCheckedChangeListener((buttonView, isChecked) -> {
             sharedPreferences.edit().putBoolean("notificaciones", isChecked).apply();
+            hablarSiHabilitado(isChecked ? "Recordatorios activados." : "Recordatorios desactivados.");
             Toast.makeText(this, isChecked ? "Recordatorios activados" : "Recordatorios desactivados", Toast.LENGTH_SHORT).show();
         });
 
         btnGestionarPermisos.setOnClickListener(v -> {
+            hablarSiHabilitado("Configuración de permisos.");
             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
             Uri uri = Uri.fromParts("package", getPackageName(), null);
             intent.setData(uri);
             startActivity(intent);
         });
 
-        btnReiniciarDatos.setOnClickListener(v -> mostrarDialogoConfirmacionReinicio());
+        btnReiniciarDatos.setOnClickListener(v -> {
+            hablarSiHabilitado("Advertencia de seguridad.");
+            mostrarDialogoConfirmacionReinicio();
+        });
     }
 
     /**
@@ -164,7 +228,16 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
             return;
         }
 
-        sharedPreferences.edit().putInt("tema_app", position).commit();
+        String nombreTema = parent.getItemAtPosition(position).toString();
+
+        sharedPreferences.edit()
+                .putInt("tema_app", position)
+                .putString(
+                        KEY_TTS_PENDIENTE,
+                        "Tema seleccionado: " + nombreTema
+                )
+                .apply();
+
         switch (position) {
             case 0:
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
@@ -177,6 +250,12 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
                 break;
         }
+
+        spinnerThemeOptions.postDelayed(() -> {
+            if (!isFinishing() && !isDestroyed()) {
+                reproducirAnuncioPendiente();
+            }
+        }, 1200);
     }
 
     /**
@@ -197,17 +276,28 @@ public class PantallaConfiguracion extends AppCompatActivity implements AdapterV
                 .setMessage("¿Estás seguro de restablecer todos los datos locales en SQLite? Se perderá el historial de hábitos.")
                 .setPositiveButton("Sí, restablecer", (dialog, which) -> {
                     dbHelper.reiniciarTodo();
+                    hablarSiHabilitado("Base de datos local restablecida con éxito.");
                     Toast.makeText(this, "Base de datos local restablecida con éxito", Toast.LENGTH_LONG).show();
                 })
-                .setNegativeButton("Cancelar", null)
+                .setNegativeButton("Cancelar", (dialog, which) -> {
+                    hablarSiHabilitado("Reinicio cancelado.");
+                })
                 .show();
+    }
+
+    /**
+     * Ciclo de vida: Sincroniza preferencias al reanudar la actividad.
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        sincronizarTtsConPreferencia();
     }
 
     /**
      * Cierra la conexion abierta con el link @Databasehelper y libera el TTS al destruir
      * la actividad para prevenir una fuga de recursos.
      */
-
     @Override
     protected void onDestroy() {
         if (ttsHelper != null) {

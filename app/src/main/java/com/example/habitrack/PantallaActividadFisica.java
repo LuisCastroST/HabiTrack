@@ -34,7 +34,7 @@ import java.util.Locale;
 
 /**
  * Actividad encargada del seguimiento de actividades fisicas y geolocalizacion.
- * Gestiona un servicio en priper plano para el rastreo GPS, interactua con un mapa renderizado
+ * Gestiona un servicio en primer plano para el rastreo GPS, interactua con un mapa renderizado
  * en un @link WebView mediante JavaScript Bridge y calcula la distancia hacia objetivos o metas libres.
  */
 
@@ -57,6 +57,7 @@ public class PantallaActividadFisica extends AppCompatActivity {
 
     private TtsHelper ttsHelper;
     private SharedPreferences sharedPreferences;
+    private static final String PREFS_NAME = "HabiTrackPrefs";
 
     /**
      * Receptor de transmisiones para actualizar coordenadas y la distancia recorrida en tiempo
@@ -76,7 +77,7 @@ public class PantallaActividadFisica extends AppCompatActivity {
     };
 
     /**
-     * Inicia los componentes de la interjaz de actividad fisica, configura el @link WebView
+     * Inicia los componentes de la interfaz de actividad fisica, configura el @link WebView
      * con soporte de JavaScript e inicia el servicio de rastreo GPS en segundo plano.
      *
      * @param savedInstanceState Estado previo guardado de la actividad, si existe.
@@ -87,16 +88,12 @@ public class PantallaActividadFisica extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pantalla_actividad_fisica);
 
-        sharedPreferences = getSharedPreferences("HabiTrackPrefs", Context.MODE_PRIVATE);
+        sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
-        boolean vozHabilitada = sharedPreferences.getBoolean("voz_botones", false);
-        if (vozHabilitada) {
-            ttsHelper = new TtsHelper(this);
-            ttsHelper.hablar("Iniciando pantalla de actividad física. GPS activo.");
-        }
+        sincronizarTtsConPreferencia();
+        hablarSiHabilitado("Iniciando pantalla de actividad física. GPS activo.");
 
-        SharedPreferences prefsTema = getSharedPreferences("HabiTrackPrefs", Context.MODE_PRIVATE);
-        int temaSeleccionado = prefsTema.getInt("tema_app", 2);
+        int temaSeleccionado = sharedPreferences.getInt("tema_app", 2);
         switch (temaSeleccionado) {
             case 0:
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
@@ -118,11 +115,12 @@ public class PantallaActividadFisica extends AppCompatActivity {
         Button btnVolver = findViewById(R.id.btnVolverAtras);
         if (btnVolver != null) {
             btnVolver.setOnClickListener(v -> {
+                hablarSiHabilitado("Volviendo a gestionar hábitos.");
                 Intent intent = new Intent(PantallaActividadFisica.this, GestionarHabitos.class);
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 startActivity(intent);
                 finish();
-           });
+            });
         }
 
         TextView tvTitulo = findViewById(R.id.tvTituloActividadFisica);
@@ -165,7 +163,33 @@ public class PantallaActividadFisica extends AppCompatActivity {
         }
 
         if (btnFinalizar != null) {
-            btnFinalizar.setOnClickListener(v -> finalizarEntrenamiento());
+            btnFinalizar.setOnClickListener(v -> {
+                hablarSiHabilitado("Finalizando entrenamiento.");
+                finalizarEntrenamiento();
+            });
+        }
+    }
+
+    /**
+     * Sincroniza el estado del motor TTS con la preferencia guardada.
+     */
+    private void sincronizarTtsConPreferencia() {
+        boolean vozHabilitada = sharedPreferences.getBoolean("voz_botones", false);
+
+        if (vozHabilitada && ttsHelper == null) {
+            ttsHelper = new TtsHelper(getApplicationContext());
+        } else if (!vozHabilitada && ttsHelper != null) {
+            ttsHelper.liberar();
+            ttsHelper = null;
+        }
+    }
+
+    /**
+     * Reproduce un texto por voz de forma segura si el TTS se encuentra habilitado.
+     */
+    private void hablarSiHabilitado(String texto) {
+        if (ttsHelper != null) {
+            ttsHelper.hablar(texto);
         }
     }
 
@@ -176,6 +200,7 @@ public class PantallaActividadFisica extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        sincronizarTtsConPreferencia();
         IntentFilter filter = new IntentFilter("ACTUALIZAR_UBICACION_GPS");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(ubicacionReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -213,6 +238,7 @@ public class PantallaActividadFisica extends AppCompatActivity {
                 latObjetivo = lat;
                 lngObjetivo = lng;
                 modoObjetivoFijado = true;
+                hablarSiHabilitado("Objetivo fijado en el mapa.");
                 Toast.makeText(PantallaActividadFisica.this, "Objetivo fijado", Toast.LENGTH_SHORT).show();
             });
         }
@@ -244,6 +270,7 @@ public class PantallaActividadFisica extends AppCompatActivity {
                 if (distanciaAlObjetivo <= RADIO_LLEGADA_METROS) {
                     modoObjetivoFijado = false;
                     long tiempoTotalSegundos = (System.currentTimeMillis() - ServicioSeguimiento.tiempoInicioMs) / 1000;
+                    hablarSiHabilitado("Has llegado a tu meta.");
                     mostrarDialogoVictoria(distanciaTotalMetros, tiempoTotalSegundos);
                 }
             } else {
@@ -262,7 +289,7 @@ public class PantallaActividadFisica extends AppCompatActivity {
      * Muestra un dialogo de exito cuando el usuario alcanza el objetivo geografico fijado
      * guardando los detalles en la base de datos local.
      *
-     * @param distancia      Distancia total recorrida en metros.
+     * @param distancia Distancia total recorrida en metros.
      * @param tiempoSegundos Tiempo total empleado en segundos.
      */
 
@@ -372,20 +399,19 @@ public class PantallaActividadFisica extends AppCompatActivity {
         moveTaskToBack(true);
     }
 
-
     /**
      * Cierra la conexion abierta con el link @Databasehelper y libera el TTS al destruir
      * la actividad para prevenir una fuga de recursos.
      */
 
-@Override
-protected void onDestroy() {
-    if (ttsHelper != null) {
-        ttsHelper.liberar();
+    @Override
+    protected void onDestroy() {
+        if (ttsHelper != null) {
+            ttsHelper.liberar();
+        }
+        if (dbHelper != null) {
+            dbHelper.close();
+        }
+        super.onDestroy();
     }
-    if (dbHelper != null) {
-        dbHelper.close();
-    }
-    super.onDestroy();
-}
 }

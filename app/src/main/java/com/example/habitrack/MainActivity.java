@@ -39,7 +39,6 @@ import java.util.Locale;
  * el marcado de cumplimientos, calculo de rachas con una barra de progreso adicional,
  * y programacion de alarmas.
  */
-
 public class MainActivity extends AppCompatActivity {
 
     private Button btnGestionarHabitos, btnVerCalendario, btnCerrarSesion;
@@ -59,7 +58,6 @@ public class MainActivity extends AppCompatActivity {
      *
      * @param savedInstanceState Estado previo guardado de la actividad, si exite.
      */
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,7 +70,6 @@ public class MainActivity extends AppCompatActivity {
         boolean vozHabilitada = sharedPreferences.getBoolean("voz_botones", false);
         if (vozHabilitada) {
             ttsHelper = new TtsHelper(this);
-            ttsHelper.hablar("Panel principal de HabiTrack cargado.");
         }
 
         btnGestionarHabitos = findViewById(R.id.btnAgregarHabito);
@@ -97,19 +94,27 @@ public class MainActivity extends AppCompatActivity {
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
                 break;
         }
+
         if (btnGestionarHabitos != null) {
             btnGestionarHabitos.setOnClickListener(v -> {
+                hablarSiHabilitado("Gestionar Hábitos");
                 Intent intent = new Intent(MainActivity.this, GestionarHabitos.class);
                 startActivity(intent);
             });
         }
 
         if (btnVerCalendario != null) {
-            btnVerCalendario.setOnClickListener(v -> mostrarDialogoSeleccionarHabitoParaCalendario());
+            btnVerCalendario.setOnClickListener(v -> {
+                hablarSiHabilitado("Ver Calendario");
+                mostrarDialogoSeleccionarHabitoParaCalendario();
+            });
         }
 
         if (btnCerrarSesion != null) {
-            btnCerrarSesion.setOnClickListener(v -> mostrarDialogoCerrarSesion());
+            btnCerrarSesion.setOnClickListener(v -> {
+                hablarSiHabilitado("Cerrar Sesión");
+                mostrarDialogoCerrarSesion();
+            });
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
@@ -123,13 +128,36 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+     * Reproduce un texto por voz de forma segura si el TTS se encuentra habilitado.
+     *
+     * @param texto Texto a sintetizar.
+     */
+    private void hablarSiHabilitado(String texto) {
+        if (ttsHelper != null) {
+            ttsHelper.hablar(texto);
+        }
+    }
+
+    /**
+     * Sincroniza el estado del motor TTS con la preferencia guardada por el usuario.
+     */
+    private void sincronizarTtsConPreferencia() {
+        boolean vozHabilitada = sharedPreferences.getBoolean("voz_botones", false);
+
+        if (vozHabilitada && ttsHelper == null) {
+            ttsHelper = new TtsHelper(getApplicationContext());
+        } else if (!vozHabilitada && ttsHelper != null) {
+            ttsHelper.liberar();
+            ttsHelper = null;
+        }
+    }
+
+    /**
      * Inicializa y despliega el menu de opciones en la barra superior.
      *
      * @param menu Objeto Menu donde se inflan las opciones definidas en el recurso XML.
      * @return boolean True para mostrar el menu en la pantalla.
      */
-
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
@@ -143,12 +171,12 @@ public class MainActivity extends AppCompatActivity {
      * @param item El elemento de menu seleccionado por el usuario.
      * @return boolean True si la seleccion fue procesada.
      */
-
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
 
         if (id == R.id.action_settings) {
+            hablarSiHabilitado("Configuración");
             Intent intent = new Intent(MainActivity.this, PantallaConfiguracion.class);
             startActivity(intent);
             return true;
@@ -161,7 +189,6 @@ public class MainActivity extends AppCompatActivity {
      * Cierra la sesion activa del usuario actual mediante el autentificador de Firebase
      * y redirige la navegacion hacia la pantalla de inicio de sesion.
      */
-
     private void cerrarSesion() {
         FirebaseAuth.getInstance().signOut();
 
@@ -175,7 +202,6 @@ public class MainActivity extends AppCompatActivity {
      * Despliega un dialogo de seleccion con los habitos existentes para abrir una viste detallada
      * en el calendario.
      */
-
     private void mostrarDialogoSeleccionarHabitoParaCalendario() {
         Cursor cursor = dbHelper.obtenerTodosLosHabitos();
         if (cursor == null || !cursor.moveToFirst()) {
@@ -206,11 +232,14 @@ public class MainActivity extends AppCompatActivity {
                 .setTitle("Seleccionar hábito")
                 .setItems(arrayNombres, (dialog, which) -> {
                     int habitoIdSeleccionado = ids.get(which);
+                    hablarSiHabilitado("Hábito seleccionado: " + nombres.get(which));
                     Intent intent = new Intent(MainActivity.this, CalendarioActivity.class);
                     intent.putExtra("HABITO_ID", habitoIdSeleccionado);
                     startActivity(intent);
                 })
-                .setNegativeButton("Cancelar", null)
+                .setNegativeButton("Cancelar", (dialog, which) -> {
+                    hablarSiHabilitado("Cancelado");
+                })
                 .show();
     }
 
@@ -218,10 +247,10 @@ public class MainActivity extends AppCompatActivity {
      * Metodo del ciclo de vida ejecutado al reanudarse la actividad.
      * Actualiza automaticamente la barra de progreso, los habitos en el dashboard y las rachas.
      */
-
     @Override
     protected void onResume() {
         super.onResume();
+        sincronizarTtsConPreferencia();
         actualizarTextoRacha();
         cargarHabitosDashboard();
     }
@@ -230,7 +259,6 @@ public class MainActivity extends AppCompatActivity {
      * Obtiene la fecha actual formateada en texto estandar.
      * @return String con la fecha actual en formato yyyy-MM-dd.
      */
-
     private String obtenerFechaHoy() {
         return new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
     }
@@ -241,9 +269,11 @@ public class MainActivity extends AppCompatActivity {
     private void mostrarDialogoCerrarSesion() {
         new AlertDialog.Builder(MainActivity.this)
                 .setTitle("Cerrar Sesión")
-                .setMessage("Estás seguro de que quieres cerrar sesión?")
+                .setMessage("¿Estás seguro de que quieres cerrar sesión?")
                 .setPositiveButton("Cerrar Sesión", (dialog, which) -> cerrarSesion())
-                .setNegativeButton("Cancelar", null)
+                .setNegativeButton("Cancelar", (dialog, which) -> {
+                    hablarSiHabilitado("Cancelado");
+                })
                 .show();
     }
 
@@ -251,7 +281,6 @@ public class MainActivity extends AppCompatActivity {
      * Carga y renderiza dinamicamente en el panel principal los habutos marcados para el dashboard
      * asignando un CheckBox interactivo a cada uno segun su estado de cumplimiento diario.
      */
-
     private void cargarHabitosDashboard() {
         if (layoutContenedorHabitos == null) return;
 
@@ -279,6 +308,7 @@ public class MainActivity extends AppCompatActivity {
                         cb.setOnCheckedChangeListener((buttonView, isChecked) -> {
                             dbHelper.guardarEstadoHabitoFecha(idHabito, fechaHoy, isChecked);
                             actualizarBarraDeProgreso();
+                            hablarSiHabilitado(nombreHabito + (isChecked ? ", completado." : ", marcado como pendiente."));
                         });
 
                         layoutContenedorHabitos.addView(cb);
@@ -295,7 +325,6 @@ public class MainActivity extends AppCompatActivity {
      * Calcula el porcentaje de cumplimiento diario de los habitos en el dashboard
      * y actualiza visualmente el componente de @link ProgressBar.
      */
-
     private void actualizarBarraDeProgreso() {
         if (progressBarHabitos == null) return;
 
@@ -333,7 +362,6 @@ public class MainActivity extends AppCompatActivity {
      * Consulta y calcula la racha consecutiva maxima entre todos los habitos del dashboard
      * para mostrarla en la interfaz de usuario.
      */
-
     private void actualizarTextoRacha() {
         if (tvRacha == null) return;
         Cursor cursor = dbHelper.obtenerHabitosDashboard();
@@ -359,9 +387,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Solicita en tiempo de ejecucion el permiso de notificaciones
+     * Solicita en tiempo de ejecucion el permiso de notificaciones.
      */
-
     private void solicitarPermisoNotificaciones() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -371,10 +398,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Cierra la conexion abierta con el link @Databasehelper y libera el TTS al destruir
+     * Cierra la conexion abierta con el Databasehelper y libera el TTS al destruir
      * la actividad para prevenir una fuga de recursos.
      */
-
     @Override
     protected void onDestroy() {
         if (ttsHelper != null) {
@@ -390,7 +416,6 @@ public class MainActivity extends AppCompatActivity {
      * Programa una alarma repetitiva diaria mediante el sistema de @link AlarmManager
      * para recordar al usuario el registro de sus habitos.
      */
-
     private void programarNotificacionDiaria() {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, NotificationReceiver.class);

@@ -141,7 +141,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      * @param dias        Cantidad total de dias de la meta.
      * @param color       Codigo hexadecimal del color en la interfaz.
      * @return long ID del nuevo registro creado o -1 si ocurre un error.
-     * @throws SQLException Si ocurre un fallo en la ejecución de la sentencia SQL de insercion.
+     * @throwsSQLException Si ocurre un fallo en la ejecución de la sentencia SQL de insercion.
      */
 
     public long insertarHabito(String nombre, int categoriaId, int dias, String color) {

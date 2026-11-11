@@ -20,7 +20,7 @@ Cuenta con un sistema de inicio de seion y registro de usuarios integrado con Fi
 
 Persistencia local
 
-Base de datos SQLite optimizda con consultas parametrizadas para la prevencion estrictas de inyecciones SQL
+Base de datos SQLite optimizada con consultas parametrizadas para la prevencion estrictas de inyecciones SQL
 
 Seguimiento y rachas
 
@@ -48,7 +48,7 @@ Mapas y geolocalizacion: Leaflet.js integrado mediante WeViews y JavaScript Brid
 
 Persistencia local: SQLite con contrato estructurado.
 
-Autentificacion: Firebas Authentication
+Autentificacion: Firebase Authentication
 
 Gestion de alarmas y servicios: AlarmManager SDK y servicios de rastreo.
 
@@ -79,7 +79,7 @@ app/
 │   ├── main/
 │   │   ├── java/com/example/habitrack/
 │   │   │   ├── MainActivity.java             Panel principal y menu superior
-│   │   │   ├── Pantalladeinicio.java         Pantalla de bienvenida inicial
+│   │   │   ├── PantalladeInicio.java         Pantalla de bienvenida inicial
 │   │   │   ├── PantallaLogin.java            Inicio de sesion con Firebase Authentication
 │   │   │   ├── PantallaRegistro.java         Registro de nuevos usuarios
 │   │   │   ├── GestionarHabitos.java         Modulo de creacion y administracion de habitos
@@ -91,6 +91,7 @@ app/
 │   │   │   ├── DatabaseHelper.java           Capa de persistencia SQLite segura
 │   │   │   ├── HabitContract.java            Definicion de tablas y columnas
 │   │   │   ├── EstadoDiaHabito.java          Modelo de datos para estados diarios
+│   │   │   ├── TtsHelper.java               Motor de síntesis de voz
 │   │   │   └── NotificationReceiver.java     Receptor de alarmas diarias
 │   │   └── res/                              Recursos de la app
 │   │       ├── layout/                       Interfaces visuales XML

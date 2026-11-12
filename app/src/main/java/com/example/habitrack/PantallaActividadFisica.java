@@ -19,6 +19,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -168,6 +169,13 @@ public class PantallaActividadFisica extends AppCompatActivity {
                 finalizarEntrenamiento();
             });
         }
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                moveTaskToBack(true);
+            }
+        });
     }
 
     /**
@@ -205,7 +213,7 @@ public class PantallaActividadFisica extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(ubicacionReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
-            registerReceiver(ubicacionReceiver, filter);
+            registerReceiver(ubicacionReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         }
     }
 
@@ -388,15 +396,6 @@ public class PantallaActividadFisica extends AppCompatActivity {
                 Toast.makeText(this, "Permiso de ubicacion denegado", Toast.LENGTH_LONG).show();
             }
         }
-    }
-
-    /**
-     * Sobrescribe la accion del boton de atras para mover la tarea a segundo plano sin destruir la actividad.
-     */
-
-    @Override
-    public void onBackPressed() {
-        moveTaskToBack(true);
     }
 
     /**

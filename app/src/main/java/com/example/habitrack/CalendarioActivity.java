@@ -105,15 +105,18 @@ public class CalendarioActivity extends AppCompatActivity {
     }
 
     /**
-     * Cierra de forma segura la instancia abierta del DatabaseHelper.
-     * Al destruir la actividad se ayuda a prevenir fugas de memoria.
+     * Cierra de forma segura la instancia abierta del DatabaseHelper y TTS.
+     * Al destruir la actividad para prevenir fugas de memoria.
      */
 
     @Override
     protected void onDestroy() {
+        if (ttsHelper != null) {
+            ttsHelper.liberar();
+        }
         if (dbHelper != null) {
             dbHelper.close();
         }
         super.onDestroy();
     }
-}
+    }

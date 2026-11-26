@@ -18,6 +18,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.view.Menu;
 import android.view.MenuItem;
+import androidx.annotation.NonNull;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.ValueEventListener;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
@@ -48,6 +51,8 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout layoutContenedorHabitos;
 
     private DatabaseHelper dbHelper;
+    private RealtimeHabitoSync realtimeHabitoSync;
+    private ValueEventListener habitosSyncListener;
     private TtsHelper ttsHelper;
     private SharedPreferences sharedPreferences;
     private static final String PREFS_NAME = "HabiTrackPrefs";
@@ -66,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
 
         dbHelper = new DatabaseHelper(this);
         sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        realtimeHabitoSync = new RealtimeHabitoSync();
 
         boolean vozHabilitada = sharedPreferences.getBoolean("voz_botones", false);
         if (vozHabilitada) {
@@ -128,6 +134,41 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+     * Inicia el listening reactiva de los habitos del usuario en Firebase Realtime Database
+     * cuando la actividad pasa a estado visible.
+     */
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (realtimeHabitoSync != null && habitosSyncListener == null) {
+            habitosSyncListener = realtimeHabitoSync.escucharHabitos(new RealtimeHabitoSync.HabitosSyncCallback() {
+                @Override
+                public void onHabitosSincronizados(int totalHabitos, @NonNull DataSnapshot snapshot) {
+                }
+
+                @Override
+                public void onError(@NonNull String mensajeError) {
+                }
+            });
+        }
+    }
+
+    /**
+     * Para y libera el listener activo de Firebase Realtime Database cuando la actividad
+     * deja de estar visible para evitar fugas de memoria o callbacks innecesarios.
+     */
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (realtimeHabitoSync != null && habitosSyncListener != null) {
+            realtimeHabitoSync.detenerEscucha(habitosSyncListener);
+            habitosSyncListener = null;
+        }
+    }
+
+    /**
      * Reproduce un texto por voz de forma segura si el TTS se encuentra habilitado.
      *
      * @param texto Texto a sintetizar.
@@ -186,10 +227,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Cierra la sesion activa del usuario actual mediante el autentificador de Firebase
-     * y redirige la navegacion hacia la pantalla de inicio de sesion.
+     * Para el listening en Realtime Database si existe, cierra la sesion actual
+     * en Firebase Authentication y redirige al usuario hacia la pantalla de inicio de sesion.
      */
     private void cerrarSesion() {
+        if (realtimeHabitoSync != null && habitosSyncListener != null) {
+            realtimeHabitoSync.detenerEscucha(habitosSyncListener);
+            habitosSyncListener = null;
+        }
+
         FirebaseAuth.getInstance().signOut();
 
         Intent intent = new Intent(MainActivity.this, PantallaLogin.class);

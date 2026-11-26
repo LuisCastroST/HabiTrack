@@ -439,6 +439,10 @@ public class GestionarHabitos extends AppCompatActivity {
             long id = dbHelper.insertarHabito(nombre, categoriaId, dias, colorHex);
 
             if (id != -1) {
+                RealtimeHabitoSync realtimeSync = new RealtimeHabitoSync();
+                String frecuenciaTexto = "Meta " + dias + (dias == 1 ? " día" : " días");
+                realtimeSync.guardarHabito(nombre, frecuenciaTexto, false);
+
                 Toast.makeText(this, "Habito guardado", Toast.LENGTH_SHORT).show();
                 cargarListaHabitos();
                 preguntarActivarNotificacion((int) id, nombre);

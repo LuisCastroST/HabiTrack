@@ -6,7 +6,7 @@
         android:id="@+id/action_settings"
         android:contentDescription="Abrir configuraciones de la aplicación"
         android:icon="@drawable/ic_settings"
-        android:title="Configuracion"
+        android:title="Configuración"
         app:showAsAction="ifRoom" />
 
 </menu>

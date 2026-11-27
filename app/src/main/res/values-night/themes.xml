@@ -5,6 +5,8 @@
 
         <item name="android:windowBackground">#121212</item>
         <item name="android:textColorPrimary">@android:color/white</item>
+        <item name="colorPrimary">@color/ht_primary</item>
+        <item name="colorOnPrimary">@color/ht_on_primary</item>
 
     </style>
 
